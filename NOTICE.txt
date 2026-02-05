@@ -1,0 +1,14 @@
+Mynic
+
+Copyright © 2026 Ben Manwell
+
+This product includes software developed by Ben Manwell.
+
+Licensed under the Apache License, Version 2.0, with Commons Clause
+License Condition v1.0.
+
+You may use, modify, and redistribute this software for personal or
+commercial purposes. You may NOT sell this software or derivative works
+whose value derives substantially from this software.
+
+See LICENSE.txt for full terms.
