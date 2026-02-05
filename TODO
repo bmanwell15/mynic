@@ -1,0 +1,89 @@
+Loading Mynic File
+-----------------------------
+- Single Line Comments
+- Multi-lined Comments
+- All STD datatypes
+- typedef   (typedef uint16 header) // Now header is a datatype that can be used
+- Datafield settings (uint code {endianness: big, units: "m/s"})
+- include other files
+- enums
+- define    (define HEADER 0) // like enum, but for only one value. Would be useful for branch values & Array sizes
+- Default settings for datafields:
+    default { // can be place inside of packet to only default with that packer, or global for all packets
+        endianness: big,
+        units: "m/s"
+    }
+
+TODO:
+-------------------------------
+- bitfields
+- unions:
+    union multiParse { // Parses bytes as an int then as a float and displays both
+        uint32 asInt,
+        float32 asFloat
+    }
+- segment definitions
+- Branches to other packets/segment
+- Static Arrays:
+    {
+        uint16[13];
+    }
+- Dynamic arrays:
+    {
+        uint8 count;
+        uint16[count]; // If in same packet
+        // OR
+        uint16[PacketName.count]; // If in other packet
+    }
+- Complex Enums:
+    {
+        enum uint8 EVENTS {
+            E_ONE = 1 { detailSize: 2 },
+            E_TWO { detailSize: 1 },
+            E_THREE { detailSize: 0 }
+        }
+
+        EVENTS event;
+        byte details[event.detailSize];
+    }
+- Repeat fields:
+    {
+        repeat (10) {
+            byte eventHeader
+            uint payload
+        }
+
+        uint counter
+        repeat (counter) { ... }
+    }
+- Complex Conditional checking in branches:
+    branch {
+        SEGMENT1 if (currentByte < 0xA3);
+        SEGMENT2 if (cyrrentByte >= VAR_DEF); // Include operations like + - * / %?
+    }
+    
+- Mathematical expressions in values:
+    {
+        uint16 val {
+            expr: bytes * 2
+        }
+    }
+- Binary operators in values
+- STD math functions
+- Loops/repeats
+- In file byte processing:
+    {
+        interpret 656ED7 as PacketName
+    }
+- File output assigning:
+    {
+        dump PacketName1, PacketName2 as "JSON" // OR
+
+        dump * as "JSON" { // Each packet gets its own file with the file name being the timestamp
+            includeTimestamp: true,
+            includeTawBytes: true,
+            includePacketName: true,
+            destinationFolder: "./folder/path"
+        }
+    }
+- STD Mynic files for popular protocols, such as the TCP network protocol

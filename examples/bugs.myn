@@ -1,0 +1,75 @@
+/*
+    Interpret packet example
+*/
+
+enum uint8 INT_ENUM {
+    ONE = 1
+    TWO 
+    THREE
+}
+
+packet BranchTo1 { 
+    byte branchResult1; 
+}
+
+segment BranchTo2 { 
+    byte branchResult2; 
+}
+
+segment SubSegment {
+    default {
+        units: "(hex)"
+    }
+
+    byte seg1;
+    byte seg2;
+}
+
+packet SubPacket {
+    bool sub1;
+    bool sub2;
+}
+
+// 10 3f9e0652 01 3f9e0652 00000001 00000001 3D 02 FFFFFF88 AA FF00 EB6D 3F006F009F00 02 01FD 02 AE
+packet BasicsPacket {
+    default {
+        units: "*"
+    }
+
+    uint8 byte1;
+    union unionExample {
+        int32 parseMethodOne
+        float parseMethodTwo { units: "float" };
+    }
+
+    bool isTrue;
+
+    float decimalNum;
+    uint bigEnd
+    uint littleEnd { endianness: "little" }
+
+    byte oneByte;
+    INT_ENUM enumTest;
+
+    int negativeNum;
+
+    bitfield bitExample {
+        bit bit1 : 1; // most significant bit
+        bit bit2 : 1;
+        uint numBit : 3;
+        bit groupBits : 3; // least significant bits
+    }
+
+    SubPacket sub;
+    SubSegment seg;
+
+    uint16 arr[3];
+
+    uint8 count;
+    int8 dynamicArray[count];
+
+    INT_ENUM branch {
+        BranchTo1 if ONE
+        BranchTo2 if TWO
+    }
+}

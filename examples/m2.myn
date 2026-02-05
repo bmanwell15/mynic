@@ -1,0 +1,39 @@
+
+/* Possible Type setting options:
+    - endianness: str -> [big|little]
+    - hidden: bool
+    - units: str 
+
+*/
+
+import "./examples/imported.myn";
+
+
+enum uint8 EnumName {
+    ZERO = 0,
+    ONE,
+    TWO
+    THREE
+}
+
+define ARR_SIZE 12
+
+typedef bool byte_t
+
+default {
+    units: "*"
+}
+
+
+packet BasicPacket {
+    // default {
+    //     units: "px"
+    // }
+
+    // uint16 field {endianness: "little"};
+    // bool t {hidden: false}
+    EnumName eTest;
+    // int8 num {units: "m/s", endianness: "little"} // Test comment
+    // byte_t aliasField;
+};
+

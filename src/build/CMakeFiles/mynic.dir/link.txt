@@ -1,0 +1,1 @@
+/usr/bin/c++  -O0 -g -fsanitize=address CMakeFiles/mynic.dir/main.cpp.o CMakeFiles/mynic.dir/lexer.cpp.o CMakeFiles/mynic.dir/ErrorHandler.cpp.o CMakeFiles/mynic.dir/AST.cpp.o CMakeFiles/mynic.dir/Mynic.cpp.o CMakeFiles/mynic.dir/DecodedPacket.cpp.o CMakeFiles/mynic.dir/Interpreter.cpp.o -o mynic 

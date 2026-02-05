@@ -1,0 +1,6 @@
+
+
+packet ImportedPacket {
+    uint8 field1;
+}
+
