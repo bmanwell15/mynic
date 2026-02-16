@@ -40,7 +40,7 @@ packet BasicPacket {
         bit bit1 : 1; // Most significant bit
         bool bit2 : 1;
         uint numBits : 3 {units: "WOW"};
-        bits remainder : 3;
+        bits remainder : 3 {hidden: true};
     }
 };
 

@@ -380,5 +380,17 @@ std::shared_ptr<ASTBitfield> AST::parseBitfield() {
         bitfield.subfields.push_back(var);
         eatToken({SEMI_COLON, NEW_LINE});
     }
+
+    size_t bitSizeOfField = 0;
+    for (const auto& subfield : bitfield.subfields) { // Collect bit size to check if multiple of 8
+        if (subfield->type == NodeType::PRIMITIVE) {
+            bitSizeOfField += std::static_pointer_cast<ASTPrimitiveValue>(subfield)->sizeInBits;
+        }
+    }
+
+    if (bitSizeOfField % 8 != 0) {
+        ErrorHandler::throwError("Bit fields MUST end on a byte.", tokens, masterIndex);
+    }
+
     return std::make_shared<ASTBitfield>(bitfield);
 }
