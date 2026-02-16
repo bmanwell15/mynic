@@ -12,6 +12,8 @@
 #include "Interpreter.h"
 #include "DecodedPacket.h"
 
+#define PRINT_INDENT_SIZE 3
+
 
 class Mynic {
     public:
@@ -31,6 +33,7 @@ class Mynic {
         Interpreter interpreter;
 
         std::string collectFileCode(const std::string& FILENAME);
+        void printPacketField(std::shared_ptr<ASTField> field, blockDepth_t indent);
 
 };
 

@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <variant>
 #include <cstring>
+#include <iostream>
+#include <bits/stdc++.h>
 
 #include "DecodedPacket.h"
 #include "ErrorHandler.h"
@@ -28,8 +30,9 @@ class Interpreter {
     private:
         std::shared_ptr<DecodedPacket> decodedPacket;
 
-        void interpretPacket(const ASTPacket& packetDef, const std::shared_ptr<DecodedPacket>& decodedPacket, BitQueue& bitQueue);
-        Value interpretValue(const std::string& datatype, BitQueue& bitQueue, std::shared_ptr<ASTPrimitiveValueSettings> settings);
+        std::shared_ptr<InterpretedPacket> interpretPacket(const ASTPacket& packetDef, BitQueue& bitQueue);
+        std::shared_ptr<InterpretedField> interpretField(std::shared_ptr<ASTField> field, BitQueue& bitQueue);
+        Value interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue);
 };
 
 #endif

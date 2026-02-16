@@ -7,6 +7,8 @@ AST::AST(Mynic* myn) {
     tokens = {};
     rootNode = std::make_shared<ASTNode>(ASTNode{NodeType::ROOT_NODE, {}});
     primitiveBitSizes = {
+        {"bit", 0},
+        {"bits", 0},
         {"bool", 8},
         {"short", 16},
         {"ushort", 16},
@@ -118,6 +120,10 @@ std::shared_ptr<ASTField> AST::parseField() {
         return enumDef;
     }
 
+    if (token.type == IDENTIFIER && token.value == "bitfield") {
+        return parseBitfield();
+    }
+
     if (token.type == IDENTIFIER && token.value == "define") {
         return parseDefine();
     }
@@ -215,6 +221,14 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
 
     field.name = eatToken(IDENTIFIER).value;
     field.type = NodeType::PRIMITIVE;
+
+    if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == COLON) {
+        eatToken(COLON);
+        field.sizeInBits = std::stoul(eatToken(INT_LITERAL).value);
+        field.settings = parsePrimitiveSettings();
+        return std::make_shared<ASTPrimitiveValue>(field);
+    }
+
     field.sizeInBits = primitiveBitSizes[field.datatype];
     field.settings = parsePrimitiveSettings();
     return std::make_shared<ASTPrimitiveValue>(field);
@@ -352,4 +366,19 @@ std::shared_ptr<ASTDefault> AST::parseDefault() {
         interpreter->globalSettings = defaultBlock->settings;
     }
     return defaultBlock;
+}
+
+std::shared_ptr<ASTBitfield> AST::parseBitfield() {
+    eatToken(IDENTIFIER); // Eat bitfield token
+    ASTBitfield bitfield;
+    bitfield.type = NodeType::BITFIELD;
+    bitfield.name = eatToken(IDENTIFIER).value;
+    eatToken(OPEN_BRACKET);
+    blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
+    while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
+        std::shared_ptr<ASTField> var = parsePrimitive();
+        bitfield.subfields.push_back(var);
+        eatToken({SEMI_COLON, NEW_LINE});
+    }
+    return std::make_shared<ASTBitfield>(bitfield);
 }

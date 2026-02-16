@@ -7,6 +7,7 @@
 #include <variant>
 #include <memory>
 #include <iostream>
+#include <iomanip>
 
 #include "AST.h"
 
@@ -24,6 +25,11 @@ struct InterpretedPacket : public InterpretedField {
 struct InterpretedPrimitiveValue : public InterpretedField {
     Value value;
     std::shared_ptr<ASTPrimitiveValueSettings> settings;
+};
+
+struct InterpretedBitfield : public InterpretedField {
+    std::string name;
+    std::vector<std::shared_ptr<InterpretedField>> subfields;
 };
                     
 

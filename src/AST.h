@@ -70,6 +70,11 @@ struct ASTEnum : public ASTField {
     std::vector<std::shared_ptr<ASTVariable>> variables;
 };
 
+struct ASTBitfield : public ASTField {
+    std::string name;
+    std::vector<std::shared_ptr<ASTField>> subfields;
+};
+
 struct ASTDefault : public ASTField {
     std::shared_ptr<ASTPrimitiveValueSettings> settings;
 };
@@ -117,6 +122,7 @@ class AST {
         std::shared_ptr<ASTVariable> parseVarDefinition(ASTEnum* parent=nullptr);
         std::shared_ptr<ASTField> parseDefine();
         std::shared_ptr<ASTDefault> parseDefault();
+        std::shared_ptr<ASTBitfield> parseBitfield();
 };
 
 #endif

@@ -4,7 +4,7 @@ void DecodedPacket::print() const {
     std::cout << "Packet Name: " << packetName << std::endl;
     std::cout << "Raw Bytes: ";
     for (const auto& byte : rawBytes) {
-        std::cout << std::hex << static_cast<int>(byte);
+        std::cout << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(byte);
     }
     std::cout << std::dec << std::endl;
 
@@ -12,7 +12,7 @@ void DecodedPacket::print() const {
 }
 
 void DecodedPacket::print(const std::shared_ptr<InterpretedField>& field, int indent) const {
-    std::string indentStr(indent * 2, ' ');
+    std::string indentStr(indent * 3, ' ');
 
     if (field->type == NodeType::PACKET) {
         auto packetField = std::static_pointer_cast<InterpretedPacket>(field);
@@ -43,7 +43,13 @@ void DecodedPacket::print(const std::shared_ptr<InterpretedField>& field, int in
         if (primField->settings) std::cout << ' ' << primField->settings->units;
     
         std::cout << std::endl;
+    } else if (field->type == NodeType::BITFIELD) {
+        auto bitField = std::static_pointer_cast<InterpretedBitfield>(field);
+        std::cout << indentStr << bitField->name << ":\n";
+        for (const auto& subfield : bitField->subfields) {
+            print(subfield, indent + 1);
+        }
     } else {
-        std::cout << indentStr << "Unknown field type for field: " << field->name << std::endl;
+        std::cout << indentStr << "Unknown field type for field: " << (int)(field->type) << std::endl;
     }
 }

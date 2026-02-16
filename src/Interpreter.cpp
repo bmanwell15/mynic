@@ -16,10 +16,9 @@ DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes,
     for (const auto& [name, field] : rootNode->properties) {
         if (field->type == NodeType::PACKET && name == packetName) { // Found the packet definition in the AST
             ASTPacket packet = static_cast<ASTPacket&>(*field);
-            decodedPacket->rootField = std::make_shared<InterpretedPacket>();
+            decodedPacket->rootField = interpretPacket(packet, bitQueue);
             decodedPacket->rootField->name = packet.name;
             decodedPacket->rootField->type = NodeType::PACKET;
-            interpretPacket(packet, decodedPacket, bitQueue);
             return *decodedPacket;
         }
     }
@@ -59,9 +58,16 @@ uint64_t enforceEndian(uint64_t value, uint8_t  bitSize, bool isLittle){
 }
 
 
-Value Interpreter::interpretValue(const std::string& datatype, BitQueue& bitQueue, std::shared_ptr<ASTPrimitiveValueSettings> settings) {
-    uint64_t bits = bitQueue.pop(ast->primitiveBitSizes[datatype]);
-    bits = enforceEndian(bits, ast->primitiveBitSizes[datatype], settings && settings->endianBig == false);
+Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) {
+    uint64_t bits = bitQueue.pop(field.sizeInBits);
+    std::string datatype;
+
+    if (defTypeAliases.find(field.datatype) != defTypeAliases.end()) // If using deftype alias
+        datatype = defTypeAliases[field.datatype];
+    else
+        datatype = field.datatype;
+    
+    bits = enforceEndian(bits, field.sizeInBits, field.settings && field.settings->endianBig == false);
 
     for (const auto& enumDef : enums) {
         if (datatype == enumDef->name) {
@@ -71,7 +77,14 @@ Value Interpreter::interpretValue(const std::string& datatype, BitQueue& bitQueu
                     return Value{enumValue->varName};
                 }
             }
+            throw std::runtime_error("Enum value not set"); // May change into a warning?
         }
+    }
+
+    if (datatype == "bit" || datatype == "bits") {
+        auto bitStr = std::bitset<64>(bits).to_string();
+        auto pos = bitStr.find_first_not_of('0');
+        return Value{pos == std::string::npos ? "0b0" : "0b" + bitStr.substr(pos)};
     }
 
     if (datatype == "bool") {
@@ -120,26 +133,36 @@ Value Interpreter::interpretValue(const std::string& datatype, BitQueue& bitQueu
 }
 
 
-void Interpreter::interpretPacket(const ASTPacket& packetDef, const std::shared_ptr<DecodedPacket>& decodedPacket, BitQueue& bitQueue) {
-    
+std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket& packetDef, BitQueue& bitQueue) {
+    auto packet = std::make_shared<InterpretedPacket>();
     for (const auto& fieldPtr : packetDef.fields) {
-        if (fieldPtr->type == NodeType::PRIMITIVE) {
-                ASTPrimitiveValue primField = static_cast<ASTPrimitiveValue&>(*fieldPtr);
-                size_t fieldSizeBits = primField.sizeInBits;
-
-                InterpretedPrimitiveValue interpretedField;
-                interpretedField.name = primField.name;
-                interpretedField.sizeInBytes = (fieldSizeBits + 7) / 8;
-                interpretedField.type = NodeType::PRIMITIVE;
-                interpretedField.settings = primField.settings;
-
-            if (defTypeAliases.find(primField.datatype) != defTypeAliases.end()) // If using deftype alias
-                interpretedField.value = interpretValue(defTypeAliases[primField.datatype], bitQueue, primField.settings);
-            else
-                interpretedField.value = interpretValue(primField.datatype, bitQueue, primField.settings);
-
-            static_cast<InterpretedPacket*>(decodedPacket->rootField.get())->fields.push_back(std::make_shared<InterpretedPrimitiveValue>(interpretedField));
-        }
+        auto parsedField = interpretField(fieldPtr, bitQueue);
+        if (parsedField->type != NodeType::ROOT_NODE)
+            packet->fields.push_back(parsedField);
     }
+    return packet;
+}
 
+std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<ASTField> field, BitQueue& bitQueue) {
+    if (field->type == NodeType::PRIMITIVE) {
+        auto primField = std::static_pointer_cast<ASTPrimitiveValue>(field);
+
+        InterpretedPrimitiveValue interpretedField;
+        interpretedField.name = primField->name;
+        interpretedField.sizeInBytes = primField->sizeInBits / 8;
+        interpretedField.type = NodeType::PRIMITIVE;
+        interpretedField.settings = primField->settings;
+        interpretedField.value = interpretValue(*primField, bitQueue);
+        return std::make_shared<InterpretedPrimitiveValue>(interpretedField);
+    } else if (field->type == NodeType::BITFIELD) {
+        auto bitfieldDef = std::static_pointer_cast<ASTBitfield>(field);
+        InterpretedBitfield interpretedBitfield;
+        interpretedBitfield.name = bitfieldDef->name;
+        interpretedBitfield.type = NodeType::BITFIELD;
+        for (const auto& subfieldPtr : bitfieldDef->subfields) {
+            interpretedBitfield.subfields.push_back(interpretField(subfieldPtr, bitQueue));
+        }
+        return std::make_shared<InterpretedBitfield>(interpretedBitfield);
+    }
+    return std::make_shared<InterpretedBitfield>();
 }

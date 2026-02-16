@@ -35,5 +35,12 @@ packet BasicPacket {
     EnumName eTest;
     // int8 num {units: "m/s", endianness: "little"} // Test comment
     // byte_t aliasField;
+
+    bitfield TestBits {
+        bit bit1 : 1; // Most significant bit
+        bool bit2 : 1;
+        uint numBits : 3 {units: "WOW"};
+        bits remainder : 3;
+    }
 };
 

@@ -43,3 +43,7 @@
 # Build files
 *.cmake
 src/build
+
+# Executable
+*.exe
+mynic

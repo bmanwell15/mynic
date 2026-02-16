@@ -42,16 +42,28 @@ std::string Mynic::collectFileCode(const std::string& FILENAME) {
     return fileContent;
 }
 
+void Mynic::printPacketField(std::shared_ptr<ASTField> field, blockDepth_t indent) {
+    std::string indentStr = std::string(indent * PRINT_INDENT_SIZE, ' ');
+    if (field->type == NodeType::PRIMITIVE) {
+        auto primField = std::static_pointer_cast<ASTPrimitiveValue>(field);
+        std::cout << indentStr << primField->datatype << ' ' << primField->name << " (" << primField->sizeInBits << " bits);" << std::endl;
+    } else if (field->type == NodeType::BITFIELD) {
+        auto bitField = std::static_pointer_cast<ASTBitfield>(field);
+        std::cout << indentStr << "Bitfield " << bitField->name << " {" << std::endl;
+        for (const auto& subfield : bitField->subfields) {
+            printPacketField(subfield, indent + 1);
+        }
+        std::cout << indentStr << "}" << std::endl;
+    }
+}
+
 void Mynic::printPacket(const std::string& packetName) {
     for (const auto& [name, field] : rootNode->properties) {
         if (field->type == NodeType::PACKET && name == packetName) {
             ASTPacket packet = static_cast<ASTPacket&>(*field);
             std::cout << packet.name << ':' << std::endl;
             for (const auto& pktField : packet.fields) {
-                if (pktField->type == NodeType::PRIMITIVE) {
-                    ASTPrimitiveValue primField = static_cast<ASTPrimitiveValue&>(*pktField);
-                    std::cout << "  " << primField.datatype << ' ' << primField.name << " (" << primField.sizeInBits << " bits);" << std::endl;
-                }
+                printPacketField(pktField, 1);
             }
             return;
         }
