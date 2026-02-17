@@ -388,8 +388,16 @@ std::shared_ptr<ASTBitfield> AST::parseBitfield() {
         }
     }
 
-    if (bitSizeOfField % 8 != 0) {
-        ErrorHandler::throwError("Bit fields MUST end on a byte.", tokens, masterIndex);
+    if (bitSizeOfField % 8 != 0) { // If the bitfield does not end on a byte, add a hidden field to make it
+        auto primitiveSettings = std::make_shared<ASTPrimitiveValueSettings>();
+        primitiveSettings->isHidden = true;
+        auto remainderField = std::make_shared<ASTPrimitiveValue>();
+        remainderField->datatype = "bits";
+        remainderField->name = "_remainder";
+        remainderField->sizeInBits = (((bitSizeOfField + 7) / 8) * 8) - (bitSizeOfField % 8); // ceil to nearest 8
+        remainderField->type = NodeType::PRIMITIVE;
+        remainderField->settings = primitiveSettings;
+        bitfield.subfields.push_back(remainderField);
     }
 
     return std::make_shared<ASTBitfield>(bitfield);

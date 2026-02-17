@@ -13,10 +13,10 @@ Loading Mynic File
         endianness: big,
         units: "m/s"
     }
+- bitfields
 
 TODO:
 -------------------------------
-- bitfields
 - unions:
     union multiParse { // Parses bytes as an int then as a float and displays both
         uint32 asInt,
@@ -68,12 +68,13 @@ TODO:
             expr: bytes * 2
         }
     }
-- Binary operators in values
+- Binary operators in values? -> May not be needed simply because of the nature of bitfields
 - STD math functions
 - Loops/repeats
 - In file byte processing:
     {
         interpret 656ED7 as PacketName
+        ("004FE3", "PacketName")
     }
 - File output assigning:
     {
@@ -87,3 +88,4 @@ TODO:
         }
     }
 - STD Mynic files for popular protocols, such as the TCP network protocol
+- Date/Time/Seconds STD datatypes
