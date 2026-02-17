@@ -163,6 +163,23 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
             interpretedBitfield.subfields.push_back(interpretField(subfieldPtr, bitQueue));
         }
         return std::make_shared<InterpretedBitfield>(interpretedBitfield);
+    } else if (field->type == NodeType::UNION) {
+        auto unionfieldDef = std::static_pointer_cast<ASTUnion>(field);
+        InterpretedUnionfield interpretedUnionfield;
+        interpretedUnionfield.name = unionfieldDef->name;
+        interpretedUnionfield.type = NodeType::UNION;
+        for (const auto& subfieldPtr : unionfieldDef->subfields) {
+            auto interpretedSubfield = interpretField(subfieldPtr, bitQueue);
+            interpretedUnionfield.subfields.push_back(interpretedSubfield);
+            if (interpretedSubfield->type == NodeType::PRIMITIVE) {
+                auto subfieldPrim = std::static_pointer_cast<InterpretedUnionfield>(interpretedSubfield);
+                bitQueue.rewind(subfieldPrim->sizeInBytes * 8); // Rewind to interpret again
+            } else {
+                throw std::runtime_error("Only primitives can be inside of a union field.");
+            }
+        }
+        return std::make_shared<InterpretedUnionfield>(interpretedUnionfield);
     }
-    return std::make_shared<InterpretedBitfield>();
+
+    return std::make_shared<InterpretedField>();
 }

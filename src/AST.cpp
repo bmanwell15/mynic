@@ -63,6 +63,21 @@ Token AST::eatToken(std::initializer_list<TokenType> types) {
     throw std::runtime_error("Unreachable code in AST::eatToken");
 }
 
+void AST::eatOptionalToken(std::initializer_list<TokenType> types) {
+    if (!(std::find(types.begin(), types.end(), NEW_LINE) != types.end()))
+        skipWhiteSpace();
+
+    if (masterIndex >= tokens.size() - 1)
+        throw std::runtime_error("Unexpected end of token stream.");
+
+    for (const TokenType& expectedType : types) {
+        if (tokens[masterIndex].type == expectedType) {
+            masterIndex++;
+            return;
+        }
+    }
+}
+
 Token AST::eatToken(TokenType expectedType) {
     return eatToken({expectedType});
 }
@@ -118,6 +133,10 @@ std::shared_ptr<ASTField> AST::parseField() {
         std::shared_ptr<ASTEnum> enumDef = parseEnum();
         interpreter->enums.push_back(enumDef);
         return enumDef;
+    }
+
+    if (token.type == IDENTIFIER && token.value == "union") {
+        return parseUnion();
     }
 
     if (token.type == IDENTIFIER && token.value == "bitfield") {
@@ -376,8 +395,9 @@ std::shared_ptr<ASTBitfield> AST::parseBitfield() {
     eatToken(OPEN_BRACKET);
     blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
     while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
-        std::shared_ptr<ASTField> var = parsePrimitive();
+        std::shared_ptr<ASTField> var = parseField();
         bitfield.subfields.push_back(var);
+        if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CLOSE_BRACKET) break;
         eatToken({SEMI_COLON, NEW_LINE});
     }
 
@@ -401,4 +421,29 @@ std::shared_ptr<ASTBitfield> AST::parseBitfield() {
     }
 
     return std::make_shared<ASTBitfield>(bitfield);
+}
+
+std::shared_ptr<ASTUnion> AST::parseUnion() {
+    eatToken(IDENTIFIER); // Eat union token
+    ASTUnion unionfield;
+    unionfield.type = NodeType::UNION;
+    unionfield.name = eatToken(IDENTIFIER).value;
+    eatToken(OPEN_BRACKET);
+    blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
+    while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
+        std::shared_ptr<ASTField> var = parsePrimitive();
+        unionfield.subfields.push_back(var);
+        std::cout << Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).value << std::endl;
+        if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CLOSE_BRACKET) break;
+        eatOptionalToken({SEMI_COLON, NEW_LINE});
+    }
+
+    size_t bitSizeOfField = std::static_pointer_cast<ASTPrimitiveValue>(unionfield.subfields[0])->sizeInBits;
+    for (const auto& subfield : unionfield.subfields) { // Collect bit size to check if they are consistant
+        if (subfield->type == NodeType::PRIMITIVE) {
+            if (bitSizeOfField != std::static_pointer_cast<ASTPrimitiveValue>(subfield)->sizeInBits)
+                ErrorHandler::throwError("Union '" + unionfield.name + "' must have values of the same bit size.", tokens, masterIndex);
+        }
+    }
+    return std::make_shared<ASTUnion>(unionfield);
 }

@@ -36,10 +36,17 @@ packet BasicPacket {
     // int8 num {units: "m/s", endianness: "little"} // Test comment
     // byte_t aliasField;
 
-    bitfield TestBits {
-        bit bit1 : 1; // Most significant bit
-        bool bit2 : 1;
-        uint numBits : 3 {units: "WOW"};
+    //bitfield TestBits {
+    //    union BITU {
+    //        bit bit1 : 1; // Most significant bit
+    //        bool bit2 : 1;
+    //    }
+    //    uint numBits : 3 {units: "WOW"};
+    //}
+
+    union TestUnion {
+        uint8 asNum;
+        bool asBool;
     }
 };
 

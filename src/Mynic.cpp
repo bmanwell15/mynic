@@ -54,6 +54,13 @@ void Mynic::printPacketField(std::shared_ptr<ASTField> field, blockDepth_t inden
             printPacketField(subfield, indent + 1);
         }
         std::cout << indentStr << "}" << std::endl;
+    } else if (field->type == NodeType::UNION) {
+        auto unionfield = std::static_pointer_cast<ASTUnion>(field);
+        std::cout << indentStr << "Union " << unionfield->name << " {" << std::endl;
+        for (const auto& subfield : unionfield->subfields) {
+            printPacketField(subfield, indent + 1);
+        }
+        std::cout << indentStr << "}" << std::endl;
     }
 }
 

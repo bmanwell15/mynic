@@ -16,7 +16,6 @@ void DecodedPacket::print(const std::shared_ptr<InterpretedField>& field, int in
 
     if (field->type == NodeType::PACKET) {
         auto packetField = std::static_pointer_cast<InterpretedPacket>(field);
-        std::cout << indentStr << "Packet: " << packetField->name << std::endl;
         for (const auto& subField : packetField->fields) {
             print(subField, indent + 1);
         }
@@ -49,7 +48,11 @@ void DecodedPacket::print(const std::shared_ptr<InterpretedField>& field, int in
         for (const auto& subfield : bitField->subfields) {
             print(subfield, indent + 1);
         }
-    } else {
-        std::cout << indentStr << "Unknown field type for field: " << (int)(field->type) << std::endl;
+    } else if (field->type == NodeType::UNION) {
+        auto unionfield = std::static_pointer_cast<InterpretedUnionfield>(field);
+        std::cout << indentStr << unionfield->name << ":\n";
+        for (const auto& subfield : unionfield->subfields) {
+            print(subfield, indent + 1);
+        }
     }
 }

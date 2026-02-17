@@ -75,6 +75,11 @@ struct ASTBitfield : public ASTField {
     std::vector<std::shared_ptr<ASTField>> subfields;
 };
 
+struct ASTUnion : public ASTField {
+    std::string name;
+    std::vector<std::shared_ptr<ASTField>> subfields;
+};
+
 struct ASTDefault : public ASTField {
     std::shared_ptr<ASTPrimitiveValueSettings> settings;
 };
@@ -109,6 +114,7 @@ class AST {
 
         Token eatToken(TokenType expectedType);
         Token eatToken(std::initializer_list<TokenType> types);
+        void eatOptionalToken(std::initializer_list<TokenType> types);
         void skipWhiteSpace(bool includeCommas=false, bool includeSemiColons=false);
 
         // Parsing functions
@@ -123,6 +129,7 @@ class AST {
         std::shared_ptr<ASTField> parseDefine();
         std::shared_ptr<ASTDefault> parseDefault();
         std::shared_ptr<ASTBitfield> parseBitfield();
+        std::shared_ptr<ASTUnion> parseUnion();
 };
 
 #endif

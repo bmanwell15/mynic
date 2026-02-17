@@ -31,6 +31,11 @@ struct InterpretedBitfield : public InterpretedField {
     std::string name;
     std::vector<std::shared_ptr<InterpretedField>> subfields;
 };
+
+struct InterpretedUnionfield : public InterpretedField {
+    std::string name;
+    std::vector<std::shared_ptr<InterpretedField>> subfields;
+};
                     
 
 class DecodedPacket {

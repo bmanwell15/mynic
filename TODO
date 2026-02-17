@@ -14,14 +14,14 @@ Loading Mynic File
         units: "m/s"
     }
 - bitfields
-
-TODO:
--------------------------------
 - unions:
     union multiParse { // Parses bytes as an int then as a float and displays both
         uint32 asInt,
         float32 asFloat
     }
+
+TODO:
+-------------------------------
 - segment definitions
 - Branches to other packets/segment
 - Static Arrays:
@@ -89,3 +89,4 @@ TODO:
     }
 - STD Mynic files for popular protocols, such as the TCP network protocol
 - Date/Time/Seconds STD datatypes
+- bitsX datatype, similar to uint, X can be any positive int
