@@ -21,16 +21,17 @@ Loading Mynic File
     }
 - segment definitions
 - Branches to other packets/segment
+- bitsX datatype, similar to uint, X can be any positive int -> Prints string of bits
 
 
 TODO:
 -------------------------------
-- byte datatype that prints out as hex
-- Date/Time/Seconds STD datatypes
-- bitsX datatype, similar to uint, X can be any positive int -> Prints string of bits
+- Timestamps -> Seconds/Milliseconds/Nanoseconds (need all 3?) since Unix epoch
+- Time Elapsed -> Seconds/Milliseconds/Nanoseconds to timestamp (date/time/datetime -> need all 3?) (Timestamp shown as 2026-02-23T14:35:10Z according to ISO)
 - Static Arrays:
     {
-        uint16[13];
+        uint16[13]; // 13 bytes * 16 bits (2 bytes) = 26 bytes
+        bytes2[20]; // 20 groupings of 2 bytes = 40 bytes
     }
 - Dynamic arrays:
     {

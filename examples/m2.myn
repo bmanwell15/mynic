@@ -56,7 +56,17 @@ packet BasicPacket {
     //    bool asBool;
     //}
 
-    BasicSegment segTest;
-    SubPacket subPackTest;
+    //BasicSegment segTest;
+    //SubPacket subPackTest;
+
+    union EndianCheck {
+        bytes2 bigByte;
+        bytes2 littleByte {endianness: "little"}
+        bits16 asBits;
+    }
+
+    bits8 strBits;
+
+
 };
 

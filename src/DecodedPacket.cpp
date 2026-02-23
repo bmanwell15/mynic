@@ -31,7 +31,10 @@ void DecodedPacket::print(const std::shared_ptr<InterpretedField>& field, int in
                 std::cout << (value ? "true" : "false");
             } else if constexpr (std::is_same_v<T, std::string>) {
                 std::cout << value;
-            } else if constexpr (std::is_same_v<T, uint8_t> || std::is_same_v<T, int8_t>) {
+            } else if constexpr (std::is_same_v<T, uint8_t>) { // byte
+                std::cout << "0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(value);
+                std::cout << std::dec;
+            } else if constexpr (std::is_same_v<T, int8_t>) {
                 std::cout << static_cast<int>(value);
             } else if constexpr (std::is_arithmetic_v<T>) {
                 std::cout << value;
@@ -45,15 +48,17 @@ void DecodedPacket::print(const std::shared_ptr<InterpretedField>& field, int in
         std::cout << std::endl;
     } else if (field->type == NodeType::BITFIELD) {
         auto bitField = std::static_pointer_cast<InterpretedBitfield>(field);
-        std::cout << indentStr << bitField->name << ":\n";
+        std::cout << indentStr << bitField->name << " {\n";
         for (const auto& subfield : bitField->subfields) {
             print(subfield, indent + 1);
         }
+        std::cout << indentStr << "}\n";
     } else if (field->type == NodeType::UNION) {
         auto unionfield = std::static_pointer_cast<InterpretedUnionfield>(field);
-        std::cout << indentStr << unionfield->name << ":\n";
+        std::cout << indentStr << unionfield->name << " {\n";
         for (const auto& subfield : unionfield->subfields) {
             print(subfield, indent + 1);
         }
+        std::cout << indentStr << "}\n";
     }
 }

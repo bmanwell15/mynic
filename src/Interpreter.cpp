@@ -72,6 +72,23 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
         return Value{pos == std::string::npos ? "0b0" : "0b" + bitStr.substr(pos)};
     }
 
+    if (datatype.starts_with("bits")) { // && != "bits" is assumed -> Arbitrary bitsX
+        auto bitStr = std::bitset<64>(bits).to_string();
+        auto pos = field.sizeInBits;
+        return Value{pos == std::string::npos ? "0b0" : "0b" + bitStr.substr(bitStr.size() - pos)};
+    }
+
+    if (datatype == "byte") {
+        return Value{static_cast<uint8_t>(bits)};
+    }
+
+    if (datatype.starts_with("bytes")) {
+        std::stringstream ss;
+        int bytesNum = std::stoi(datatype.substr(5));
+        ss << "0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(bytesNum * 2) << bits;
+        return Value{ss.str()};
+    }
+
     if (datatype == "bool") {
         return Value{static_cast<bool>(bits)};
     }
@@ -108,10 +125,6 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
         double d;
         std::memcpy(&d, &bits, sizeof(double));
         return d;
-    }
-
-    if (datatype == "byte") {
-        return Value{static_cast<uint8_t>(bits)};
     }
 
     throw std::runtime_error("Unsupported datatype: " + datatype);
@@ -161,16 +174,19 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         InterpretedUnionfield interpretedUnionfield;
         interpretedUnionfield.name = unionfieldDef->name;
         interpretedUnionfield.type = NodeType::UNION;
+        size_t unionSize = 0;
         for (const auto& subfieldPtr : unionfieldDef->subfields) {
             auto interpretedSubfield = interpretField(subfieldPtr, bitQueue);
             interpretedUnionfield.subfields.push_back(interpretedSubfield);
             if (interpretedSubfield->type == NodeType::PRIMITIVE) {
                 auto subfieldPrim = std::static_pointer_cast<InterpretedUnionfield>(interpretedSubfield);
-                bitQueue.rewind(subfieldPrim->sizeInBytes * 8); // Rewind to interpret again
+                if (unionSize == 0) unionSize = subfieldPrim->sizeInBytes * 8;
+                bitQueue.rewind(unionSize); // Rewind to interpret again
             } else {
                 throw std::runtime_error("Only primitives can be inside of a union field.");
             }
         }
+        bitQueue.pop(unionSize); // Move past union
         return std::make_shared<InterpretedUnionfield>(interpretedUnionfield);
     } else if (field->type == NodeType::SEGMENT || field->type == NodeType::PACKET) {
         auto segment = std::static_pointer_cast<ASTPacket>(field);

@@ -66,7 +66,6 @@ std::vector<Token> Lexer::tokenize(const std::string content) {
         if (ch == '/' && content[i + 1] == '/') { // SINGLE LINED COMMENTS
             while (content[i] != '\n') {i++;}
             i--; // Keep the new line in the token stream
-            lineNumber++;
         } else if ((ch == '/' && content[i + 1] == '*') || (ch == '*' && content[i + 1] == '/')) { // MULTI LINED COMMENTS
             ttype = MULTI_LINED_COMMENT;
             std::string comment = std::string(1, ch) + std::string(1, content[++i]);

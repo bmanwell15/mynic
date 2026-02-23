@@ -9,6 +9,7 @@ AST::AST(Mynic* myn) {
     primitiveBitSizes = {
         {"bit", 0},
         {"bits", 0},
+        {"byte", 8},
         {"bool", 8},
         {"short", 16},
         {"ushort", 16},
@@ -88,15 +89,20 @@ void AST::skipWhiteSpace(bool includeCommas, bool includeSemiColons) {
 }
 
 // Returns true if string is in format intX or uintX where X is an integer
-bool isIntX(const std::string& s) {
-    if (s.size() <= 3) return false;          // must have "int" + at least 1 digit
-    if (s.compare(0, 3, "int") != 0 && s.compare(0, 4, "uint") != 0) return false;
-    size_t i = std::isdigit(s[3]) ? 3 : 4; // set to 3 if int, 4 if uint
+bool isDynamicSizeType(const std::string& s) {
+    const std::vector<std::string> prefixes = {"int", "uint", "bits", "bytes"};
+    for (const auto& p : prefixes) {
+        if (p == "bytes" && s.size() <= p.size()) continue; // must have at least one digit after prefix
+        if (s.compare(0, p.size(), p) != 0) continue;
 
-    for (; i < s.size(); i++) 
-        if (!std::isdigit(s[i])) return false;
+        for (size_t i = p.size(); i < s.size(); ++i) {
+            unsigned char c = static_cast<unsigned char>(s[i]);
+            if (!std::isdigit(c)) return false;
+        }
+        return true;
+    }
 
-    return true;
+    return false;
 }
 
 std::string removeQuotes(std::string& str) {
@@ -107,7 +113,7 @@ std::string removeQuotes(std::string& str) {
 
 
 bool AST::isKnownType(const std::string& type) {
-    return primitiveBitSizes.count(type) || isIntX(type) || rootNode->properties[type];
+    return primitiveBitSizes.count(type) || isDynamicSizeType(type) || rootNode->properties[type];
 }
 
 std::shared_ptr<ASTField> AST::parseField() {
@@ -203,7 +209,7 @@ std::shared_ptr<ASTField> AST::parseTypeDef() {
     typeDef.existingTypeName = eatToken(IDENTIFIER).value;
     typeDef.newTypeName = eatToken(IDENTIFIER).value;
 
-    if (isIntX(typeDef.existingTypeName)) {
+    if (isDynamicSizeType(typeDef.existingTypeName)) {
         size_t pos = typeDef.existingTypeName.find_first_of("0123456789");
         if (pos != std::string::npos) {
             size_t bits = std::stoi(typeDef.existingTypeName.substr(pos));
@@ -230,10 +236,11 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
     ASTPrimitiveValue field;
     field.datatype = eatToken(IDENTIFIER).value;
 
-    if (isIntX(field.datatype)) {
+    if (isDynamicSizeType(field.datatype)) {
         size_t pos = field.datatype.find_first_of("0123456789");
         if (pos != std::string::npos) {
             size_t bits = std::stoi(field.datatype.substr(pos));
+            if (field.datatype.starts_with("bytes")) bits *= 8;
             if (bits == 0 || bits > 64) {
                 ErrorHandler::throwError("Integer type width must be between 1 and 64 bits: " + field.datatype, tokens, masterIndex - 1);
             }
@@ -301,9 +308,6 @@ std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {
             break;
         }
     }
-
-    std::cout << interpreter->globalSettings->units << std::endl;
-
     return settings;
 }
 
@@ -440,7 +444,6 @@ std::shared_ptr<ASTUnion> AST::parseUnion() {
     while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
         std::shared_ptr<ASTField> var = parsePrimitive();
         unionfield.subfields.push_back(var);
-        std::cout << Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).value << std::endl;
         if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CLOSE_BRACKET) break;
         eatOptionalToken({SEMI_COLON, NEW_LINE});
     }
