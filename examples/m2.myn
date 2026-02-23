@@ -24,6 +24,13 @@ default {
     units: "*"
 }
 
+segment BasicSegment {
+    uint8 didLoad;
+}
+
+packet SubPacket {
+    uint8 fromSubPacket;
+}
 
 packet BasicPacket {
     // default {
@@ -44,9 +51,12 @@ packet BasicPacket {
     //    uint numBits : 3 {units: "WOW"};
     //}
 
-    union TestUnion {
-        uint8 asNum;
-        bool asBool;
-    }
+    //union TestUnion {
+    //    uint8 asNum;
+    //    bool asBool;
+    //}
+
+    BasicSegment segTest;
+    SubPacket subPackTest;
 };
 

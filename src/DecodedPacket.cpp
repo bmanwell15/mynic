@@ -13,12 +13,13 @@ void DecodedPacket::print() const {
 
 void DecodedPacket::print(const std::shared_ptr<InterpretedField>& field, int indent) const {
     std::string indentStr(indent * 3, ' ');
-
-    if (field->type == NodeType::PACKET) {
+    if (field->type == NodeType::PACKET || field->type == NodeType::SEGMENT) {
         auto packetField = std::static_pointer_cast<InterpretedPacket>(field);
+        std::cout << indentStr << packetField->name << " {\n";
         for (const auto& subField : packetField->fields) {
             print(subField, indent + 1);
         }
+        std::cout << indentStr << "}\n";
     } else if (field->type == NodeType::PRIMITIVE) {
         auto primField = std::static_pointer_cast<InterpretedPrimitiveValue>(field);
         if (primField->settings && primField->settings->isHidden) return;

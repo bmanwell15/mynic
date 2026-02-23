@@ -107,7 +107,7 @@ std::string removeQuotes(std::string& str) {
 
 
 bool AST::isKnownType(const std::string& type) {
-    return primitiveBitSizes.count(type) || isIntX(type);
+    return primitiveBitSizes.count(type) || isIntX(type) || rootNode->properties[type];
 }
 
 std::shared_ptr<ASTField> AST::parseField() {
@@ -123,6 +123,13 @@ std::shared_ptr<ASTField> AST::parseField() {
         std::shared_ptr<ASTPacket> packet = parsePacket();
         rootNode->properties[packet->name] = packet;
         return packet;
+    }
+
+    if (token.type == IDENTIFIER && token.value == "segment") {
+        std::shared_ptr<ASTPacket> segment = parsePacket();
+        segment->type = NodeType::SEGMENT;
+        rootNode->properties[segment->name] = segment;
+        return segment;
     }
 
     if (token.type == IDENTIFIER && token.value == "typedef") {

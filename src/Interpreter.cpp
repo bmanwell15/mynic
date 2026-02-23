@@ -3,10 +3,12 @@
 Interpreter::Interpreter() {
     defTypeAliases = {};
     decodedPacket = nullptr;
+    astTree = nullptr;
     globalSettings = std::make_shared<ASTPrimitiveValueSettings>(ASTPrimitiveValueSettings{});
 }
 
 DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes, const std::string& packetName, const std::shared_ptr<ASTNode>& rootNode) {
+    astTree = rootNode;
     decodedPacket = std::make_shared<DecodedPacket>();
     decodedPacket->rawBytes = dataBytes;
     decodedPacket->packetName = packetName;
@@ -14,33 +16,16 @@ DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes,
     BitQueue bitQueue(dataBytes);
 
     for (const auto& [name, field] : rootNode->properties) {
-        if (field->type == NodeType::PACKET && name == packetName) { // Found the packet definition in the AST
-            ASTPacket packet = static_cast<ASTPacket&>(*field);
-            decodedPacket->rootField = interpretPacket(packet, bitQueue);
-            decodedPacket->rootField->name = packet.name;
+        if (field && field->type == NodeType::PACKET && name == packetName) { // Found the packet definition in the AST
+            auto packet = std::static_pointer_cast<ASTPacket>(field);
+            decodedPacket->rootField = interpretPacket(*packet, bitQueue);
+            decodedPacket->rootField->name = packet->name;
             decodedPacket->rootField->type = NodeType::PACKET;
             return *decodedPacket;
         }
     }
 
     throw std::runtime_error("Packet definition for " + packetName + " not found in AST.");
-}
-
-
-template<typename T>
-Value readValue(BitQueue& bitQueue) {
-    constexpr size_t bits = sizeof(T) * 8;
-
-    if constexpr (std::is_floating_point_v<T>) {
-        uint64_t raw = bitQueue.pop(bits);
-
-        T value;
-        std::memcpy(&value, &raw, sizeof(T));
-        return value;
-    } else {
-        T value = static_cast<T>(bitQueue.pop(bits));
-        return value;
-    }
 }
 
 uint64_t enforceEndian(uint64_t value, uint8_t  bitSize, bool isLittle){
@@ -135,6 +120,10 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
 
 std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket& packetDef, BitQueue& bitQueue) {
     auto packet = std::make_shared<InterpretedPacket>();
+    // Ensure the interpreted packet has its identifying fields set so
+    // nested segments/packets are recognized when printing.
+    packet->name = packetDef.name;
+    packet->type = packetDef.type;
     for (const auto& fieldPtr : packetDef.fields) {
         auto parsedField = interpretField(fieldPtr, bitQueue);
         if (parsedField->type != NodeType::ROOT_NODE)
@@ -146,6 +135,10 @@ std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket&
 std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<ASTField> field, BitQueue& bitQueue) {
     if (field->type == NodeType::PRIMITIVE) {
         auto primField = std::static_pointer_cast<ASTPrimitiveValue>(field);
+
+        if (astTree->properties[primField->datatype]) {
+            return interpretField(astTree->properties[primField->datatype], bitQueue);
+        }
 
         InterpretedPrimitiveValue interpretedField;
         interpretedField.name = primField->name;
@@ -179,6 +172,9 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
             }
         }
         return std::make_shared<InterpretedUnionfield>(interpretedUnionfield);
+    } else if (field->type == NodeType::SEGMENT || field->type == NodeType::PACKET) {
+        auto segment = std::static_pointer_cast<ASTPacket>(field);
+        return interpretPacket(*segment, bitQueue);
     }
 
     return std::make_shared<InterpretedField>();

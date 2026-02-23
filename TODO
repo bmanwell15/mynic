@@ -19,11 +19,15 @@ Loading Mynic File
         uint32 asInt,
         float32 asFloat
     }
+- segment definitions
+- Branches to other packets/segment
+
 
 TODO:
 -------------------------------
-- segment definitions
-- Branches to other packets/segment
+- byte datatype that prints out as hex
+- Date/Time/Seconds STD datatypes
+- bitsX datatype, similar to uint, X can be any positive int -> Prints string of bits
 - Static Arrays:
     {
         uint16[13];
@@ -88,5 +92,3 @@ TODO:
         }
     }
 - STD Mynic files for popular protocols, such as the TCP network protocol
-- Date/Time/Seconds STD datatypes
-- bitsX datatype, similar to uint, X can be any positive int

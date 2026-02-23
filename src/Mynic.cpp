@@ -66,10 +66,10 @@ void Mynic::printPacketField(std::shared_ptr<ASTField> field, blockDepth_t inden
 
 void Mynic::printPacket(const std::string& packetName) {
     for (const auto& [name, field] : rootNode->properties) {
-        if (field->type == NodeType::PACKET && name == packetName) {
-            ASTPacket packet = static_cast<ASTPacket&>(*field);
-            std::cout << packet.name << ':' << std::endl;
-            for (const auto& pktField : packet.fields) {
+        if (field && field->type == NodeType::PACKET && name == packetName) {
+            auto packet = std::static_pointer_cast<ASTPacket>(field);
+            std::cout << packet->name << ':' << std::endl;
+            for (const auto& pktField : packet->fields) {
                 printPacketField(pktField, 1);
             }
             return;
