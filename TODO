@@ -22,11 +22,11 @@ Loading Mynic File
 - segment definitions
 - Branches to other packets/segment
 - bitsX datatype, similar to uint, X can be any positive int -> Prints string of bits
-- Timestamps -> Seconds/Milliseconds/Nanoseconds (need all 3?) since Unix epoch
-- Time Elapsed -> Seconds/Milliseconds/Nanoseconds to timestamp
+- datetime & timespan std types
 
 TODO:
 -------------------------------
+- bytesX datatype, where X is the number of BYTES
 - Static Arrays:
     {
         uint16[13]; // 13 bytes * 16 bits (2 bytes) = 26 bytes
@@ -38,6 +38,8 @@ TODO:
         uint16[count]; // If in same packet
         // OR
         uint16[PacketName.count]; // If in other packet
+
+        bytes[TO_END]; // Collects all of the bytes to the end of the packet -> Note that because there is not a number after "bytes", the array is assumed to be one large chunk of bytes (Same would go for bits[24])
     }
 - Complex Enums:
     {
@@ -50,6 +52,7 @@ TODO:
         EVENTS event;
         byte details[event.detailSize];
     }
+- Add Hex literals (0x00)
 - Repeat fields:
     {
         repeat (10) {
@@ -59,13 +62,29 @@ TODO:
 
         uint counter
         repeat (counter) { ... }
+        
+        while (!EOF) { ... }
+        while (currentByte != 0x00) { ... }
     }
+- conditional branches (does not actually parse or move the bit index)
+    branch bool {
+        SEGMENT1 if true;
+        SEGMENT2 if false;
+        SEGMENT3 defaults;
+    }
+
+    branch { // byte is assumed;
+        SEGMENT1 if 0x00;
+    }
+
 - Complex Conditional checking in branches:
-    branch {
-        SEGMENT1 if (currentByte < 0xA3);
-        SEGMENT2 if (cyrrentByte >= VAR_DEF); // Include operations like + - * / %?
+    branch byte {
+        SEGMENT1 if < 0xA3; // Condition logic include (> < >= <= == != %=)
+        SEGMENT2 if >= VAR_DEF; // Include operations like + - * / %?
     }
-    
+
+- Checksum (datatype?) -> Evaluates the checksum of the packet and returns true/false in another field acordingly. MUST include all major checksum formats
+
 - Mathematical expressions in values:
     {
         uint16 val {
@@ -74,7 +93,6 @@ TODO:
     }
 - Binary operators in values? -> May not be needed simply because of the nature of bitfields
 - STD math functions
-- Loops/repeats
 - In file byte processing:
     {
         interpret 656ED7 as PacketName
@@ -86,9 +104,53 @@ TODO:
 
         dump * as "JSON" { // Each packet gets its own file with the file name being the timestamp
             includeTimestamp: true,
-            includeTawBytes: true,
+            includeRawBytes: true,
             includePacketName: true,
             destinationFolder: "./folder/path"
         }
     }
-- STD Mynic files for popular protocols, such as the TCP network protocol
+
+
+- STD Mynic files for popular protocols
+    Core Internet: TCP, UDP, IP, ICMP, ARP
+
+    Network Management: SNMP, NetFlow/IPFIX, LLDP
+
+    Secure Networking: TLP, IPsec (ESH/AH)
+
+    Time & Synchronization: NTP, PTP (IEEE 1588)
+
+    Wireless Networking: 802.11 Wifi frame protocols, Bluetooth L2CAP / HCI, Zigbee, LoRaWAN
+
+    Industrial Fieldbus: CAN Bus, CANopen, DeviceNet, PROFIBUS, Modbus RTU, EtherCAT, SERCOS, POWERLINK
+
+    Industrial Ethernet: PROFINET, EtherNet/IP, OPC UA Binary Protocol
+
+    Robotics Framework Protocols: ROS TCPROS/UDPROS, DDS (Data Distribution Service)
+
+    Automotive Systems: CAN (Controller Area Network), LIN (Local Interconnect Network), FlexRay, MOST, Automotive Ethernet, UDS (Unified Diagnostic Services), OBD-II protocol stack
+
+    Aerospace, Satellites, & Rockets
+        - Space Communications Standards: CCSDS (Consultative Committee for Space Data Systems), Space Packet Protocol, Telecommand, Telemetry Transfer Frames
+        - Satellite Bus: SpaceWire, MIL-STD-1553, ARINC 429, ARINC 664 (AFDX)
+        - Ground Communications: SLE (Space Link Extension) protocols, TDM telemetry formats
+    
+    Embedded/loT Systems: MQTT, CoAP, AMQP, DDS-XRCE, LwM2M
+
+    Low-Power Radios: Thread, Z-Wave, Bluetooth LE
+
+    Data Serialization Protocols: Protocol Buffers (Protobuf), Apache Avro, FlatBuffers, Cap’n Proto, MessagePack, CBOR, BSON
+
+    Finance & Trading: FIX Binary (FAST/SBE), ITCH/OUCH, NASDAQ TotalView ITCH
+
+    Storage & Filesystems: SCSI, iSCSI, NVMe, Fibre Channel, ATA/SATA, NFS (binary RPC), SMB
+
+    Multimedia/Real-Time Streaming: RTP (Real-time Transport Protocol), RTCP, MPEG-TS, WebRTC data channels, QUIC
+
+    Database Wire Protocols: PostgreSQL Wire Protocol, MySQL Protocol, MongoDB Wire Protocol, Redis RESP (partially text but binary safe)
+
+    GPU / High Performance Computing: MPI (Message Passing Interface), RDMA protocols (InfiniBand & RoCE), NVLink
+
+    Telecom / Cellular Networks: SS7, Diameter, GTP (GPRS Tunneling Protocol), SCTP
+
+    Game Networking Protocols: RakNet, ENet, Steam Networking Protocol
