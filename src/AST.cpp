@@ -19,7 +19,21 @@ AST::AST(Mynic* myn) {
         {"float32", 32},
         {"double", 64},
         {"long", 64},
-        {"ulong", 64}
+        {"ulong", 64},
+
+        // datetimes
+        {"datetime32s", 32},
+        {"datetime64s", 64},
+        {"datetime64ms", 64},
+        {"datetime64us", 64},
+        {"datetime64ns", 64},
+
+        // timespans
+        {"timespan32s", 32},
+        {"timespan64s", 64},
+        {"timespan64ms", 64},
+        {"timespan64us", 64},
+        {"timespan64ns", 64},
     };
     mynic = myn;
     currentPacket = nullptr;

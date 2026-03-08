@@ -39,7 +39,7 @@ packet BasicPacket {
 
     // uint16 field {endianness: "little"};
     // bool t {hidden: false}
-    EnumName eTest;
+    //EnumName eTest;
     // int8 num {units: "m/s", endianness: "little"} // Test comment
     // byte_t aliasField;
 
@@ -59,13 +59,25 @@ packet BasicPacket {
     //BasicSegment segTest;
     //SubPacket subPackTest;
 
-    union EndianCheck {
-        bytes2 bigByte;
-        bytes2 littleByte {endianness: "little"}
-        bits16 asBits;
-    }
+    //union EndianCheck {
+    //    bytes2 bigByte;
+    //    bytes2 littleByte {endianness: "little"}
+    //    bits16 asBits;
+    //}
 
-    bits8 strBits;
+    //bits8 strBits;
+
+    //datetime32s datetimeSecondsWith32bits;
+    //datetime64s datetimeSecondsWith64bits;
+    //datetime64ms datetimeMilliseconds;
+    //datetime64us datetimeMicroseconds;
+    //datetime64ns datetimeNanoseconds;
+
+    timespan32s timespanWith32bits;
+    timespan64s timespanWith64bits;
+    timespan64ms timespanMilliseconds;
+    timespan64us timespanMicroseconds;
+    timespan64ns timespanNanoseconds;
 
 
 };

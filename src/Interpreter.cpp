@@ -42,6 +42,109 @@ uint64_t enforceEndian(uint64_t value, uint8_t  bitSize, bool isLittle){
     return result;
 }
 
+std::string epochToDatetimeString(int64_t epoch_ns) {
+    using namespace std::chrono;
+
+    sys_time<nanoseconds> tp{nanoseconds{epoch_ns}};
+
+    auto days_part = floor<days>(tp);
+    year_month_day ymd{days_part};
+
+    auto time_part = tp - days_part;
+    auto h = duration_cast<hours>(time_part);
+    auto m = duration_cast<minutes>(time_part - h);
+    auto s = duration_cast<seconds>(time_part - h - m);
+    auto ns = duration_cast<nanoseconds>(time_part - h - m - s).count();
+
+    std::ostringstream out;
+
+    out << int(ymd.year()) << "-"
+        << std::setw(2) << std::setfill('0') << unsigned(ymd.month()) << "-"
+        << std::setw(2) << unsigned(ymd.day()) << " ";
+
+    out << std::setw(2) << h.count() << ":"
+        << std::setw(2) << m.count() << ":"
+        << std::setw(2) << s.count();
+
+    if (ns != 0){
+        std::ostringstream frac;
+        frac << std::setw(9) << std::setfill('0') << ns;
+
+        std::string f = frac.str();
+        while (!f.empty() && f.back() == '0')
+            f.pop_back();
+
+        out << "." << f;
+    }
+
+    return out.str();
+}
+
+std::string formatDuration(int64_t ns) {
+    // Handle negative durations
+    bool negative = ns < 0;
+    uint64_t abs_ns = negative ? -ns : ns;
+
+    constexpr uint64_t NS_PER_MINUTE = 60ULL * NS_PER_SECOND;
+    constexpr uint64_t NS_PER_HOUR   = 60ULL * NS_PER_MINUTE;
+    constexpr uint64_t NS_PER_DAY    = 24ULL * NS_PER_HOUR;
+    constexpr uint64_t NS_PER_WEEK   = 7ULL * NS_PER_DAY;
+    constexpr double NS_PER_YEAR    = 365.2425 * NS_PER_DAY; // approximate
+    constexpr double NS_PER_MONTH   = 30.44 * NS_PER_DAY;    // approximate
+
+    std::ostringstream out;
+
+    if (negative) out << "-";
+
+    // Years
+    int64_t years = abs_ns / NS_PER_YEAR;
+    abs_ns -= static_cast<uint64_t>(years * NS_PER_YEAR);
+    if (years) out << years << "y ";
+
+    // Months
+    int64_t months = abs_ns / NS_PER_MONTH;
+    abs_ns -= static_cast<uint64_t>(months * NS_PER_MONTH);
+    if (months) out << months << "mo ";
+
+    // Weeks
+    int64_t weeks = abs_ns / NS_PER_WEEK;
+    abs_ns -= weeks * NS_PER_WEEK;
+    if (weeks) out << weeks << "w ";
+
+    // Days
+    int64_t days = abs_ns / NS_PER_DAY;
+    abs_ns -= days * NS_PER_DAY;
+    if (days) out << days << "d ";
+
+    // Hours
+    int64_t hours = abs_ns / NS_PER_HOUR;
+    abs_ns -= hours * NS_PER_HOUR;
+    if (hours) out << hours << "h ";
+
+    // Minutes
+    int64_t minutes = abs_ns / NS_PER_MINUTE;
+    abs_ns -= minutes * NS_PER_MINUTE;
+    if (minutes) out << minutes << "m ";
+
+    // Seconds with fraction
+    double seconds = static_cast<double>(abs_ns) / NS_PER_SECOND;
+    std::ostringstream secStream;
+    secStream << std::fixed << std::setprecision(9) << seconds;
+    std::string secStr = secStream.str();
+    
+    // Remove trailing zeros
+    while (!secStr.empty() && secStr.back() == '0')
+        secStr.pop_back();
+    
+    // Remove trailing decimal point if no fractional part
+    if (!secStr.empty() && secStr.back() == '.')
+        secStr.pop_back();
+    
+    out << secStr << "s";
+
+    return out.str();
+}
+
 
 Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) {
     uint64_t bits = bitQueue.pop(field.sizeInBits);
@@ -125,6 +228,44 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
         double d;
         std::memcpy(&d, &bits, sizeof(double));
         return d;
+    }
+
+    if (datatype == "datetime32s") {
+        int64_t seconds = static_cast<int64_t>(bits);
+        return epochToDatetimeString(seconds * NS_PER_SECOND);
+    }
+
+    if (datatype.starts_with("datetime64")) {
+        int64_t rawTime = static_cast<int64_t>(bits);
+
+        if (datatype.ends_with("ms")) {
+            return epochToDatetimeString(rawTime * NS_PER_MILLISECOND);
+        } else if (datatype.ends_with("us")) {
+            return epochToDatetimeString(rawTime * NS_PER_MICROSECOND);
+        } else if (datatype.ends_with("ns")) {
+            return epochToDatetimeString(rawTime);
+        }
+
+        return epochToDatetimeString(rawTime * NS_PER_SECOND);
+    }
+
+    if (datatype == "timespan32s") {
+        int64_t seconds = static_cast<int64_t>(bits);
+        return formatDuration(seconds * NS_PER_SECOND);
+    }
+
+    if (datatype.starts_with("timespan64")) {
+        int64_t rawTime = static_cast<int64_t>(bits);
+
+        if (datatype.ends_with("ms")) {
+            return formatDuration(rawTime * NS_PER_MILLISECOND);
+        } else if (datatype.ends_with("us")) {
+            return formatDuration(rawTime * NS_PER_MICROSECOND);
+        } else if (datatype.ends_with("ns")) {
+            return formatDuration(rawTime);
+        }
+
+        return formatDuration(rawTime * NS_PER_SECOND);
     }
 
     throw std::runtime_error("Unsupported datatype: " + datatype);

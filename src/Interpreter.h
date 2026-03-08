@@ -10,10 +10,17 @@
 #include <cstring>
 #include <iostream>
 #include <bits/stdc++.h>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 
 #include "DecodedPacket.h"
 #include "ErrorHandler.h"
 #include "BitQueue.h"
+
+#define NS_PER_SECOND       1'000'000'000LL
+#define NS_PER_MILLISECOND  1'000'000LL
+#define NS_PER_MICROSECOND  1'000LL
 
 class AST; // Forward declaration
 
