@@ -86,6 +86,7 @@ struct ASTDefault : public ASTField {
 
 struct ASTArray : public ASTField {
     size_t length;
+    std::string dynamicLength;
     std::shared_ptr<ASTPrimitiveValue> elementSchema;
 };
 

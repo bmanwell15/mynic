@@ -63,7 +63,9 @@ void Mynic::printPacketField(std::shared_ptr<ASTField> field, blockDepth_t inden
         std::cout << indentStr << "}" << std::endl;
     } else if (field->type == NodeType::ARRAY) {
         auto arrayfield = std::static_pointer_cast<ASTArray>(field);
-        std::cout << indentStr << arrayfield->elementSchema->datatype << ' ' << arrayfield->elementSchema->name << "[" << arrayfield->length << "] (" << (arrayfield->elementSchema->sizeInBits * arrayfield->length) << " bits);" << std::endl;
+        std::string bitSizeStr = arrayfield->dynamicLength == "" ? std::to_string(arrayfield->elementSchema->sizeInBits * arrayfield->length) : "?";
+        std::string insideBracketStr = arrayfield->length == 0 ? arrayfield->dynamicLength : std::to_string(arrayfield->length);
+        std::cout << indentStr << arrayfield->elementSchema->datatype << ' ' << arrayfield->elementSchema->name << "[" << insideBracketStr << "] (" << bitSizeStr << " bits);" << std::endl;
     }
 }
 
@@ -79,6 +81,15 @@ void Mynic::printPacket(const std::string& packetName) {
         }
     }
     std::cout << "Packet " << packetName << " not found." << std::endl;
+}
+
+void Mynic::printSchema() {
+    for (const auto& [name, packet] : rootNode->properties) {
+        if (packet->type == NodeType::PACKET) {
+            printPacket(name);
+            std::cout << std::endl;
+        }
+    }
 }
 
 

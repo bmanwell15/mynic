@@ -46,7 +46,7 @@ class DecodedPacket {
     public:
         std::string packetName;
         std::vector<uint8_t> rawBytes;
-        std::shared_ptr<InterpretedField> rootField;
+        std::shared_ptr<InterpretedPacket> rootField;
         void print() const;
     
     private:

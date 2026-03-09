@@ -18,7 +18,8 @@ DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes,
     for (const auto& [name, field] : rootNode->properties) {
         if (field && field->type == NodeType::PACKET && name == packetName) { // Found the packet definition in the AST
             auto packet = std::static_pointer_cast<ASTPacket>(field);
-            decodedPacket->rootField = interpretPacket(*packet, bitQueue);
+            decodedPacket->rootField = std::make_shared<InterpretedPacket>();
+            decodedPacket->rootField = interpretPacket(*packet, bitQueue, decodedPacket->rootField);
             decodedPacket->rootField->name = packet->name;
             decodedPacket->rootField->type = NodeType::PACKET;
             return *decodedPacket;
@@ -145,6 +146,38 @@ std::string formatDuration(int64_t ns) {
     return out.str();
 }
 
+std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName) {
+    if (field->name == varName) {
+        if (field->type == NodeType::PRIMITIVE) {
+            auto primValue = std::static_pointer_cast<InterpretedPrimitiveValue>(field);
+            return primValue->value;
+        }
+        throw std::runtime_error("Field '" + varName + "' is not a primitive value.");
+    }
+    
+    // Recursively search in nested structures
+    if (field->type == NodeType::PACKET || field->type == NodeType::SEGMENT) {
+        auto packet = std::static_pointer_cast<InterpretedPacket>(field);
+        for (const auto& subfield : packet->fields) {
+            auto result = getParsedValue(subfield, varName);
+            if (result.has_value()) return result;
+        }
+    } else if (field->type == NodeType::BITFIELD) {
+        auto bitfield = std::static_pointer_cast<InterpretedBitfield>(field);
+        for (const auto& subfield : bitfield->subfields) {
+            auto result = getParsedValue(subfield, varName);
+            if (result.has_value()) return result;
+        }
+    } else if (field->type == NodeType::UNION) {
+        auto unionfield = std::static_pointer_cast<InterpretedUnionfield>(field);
+        for (const auto& subfield : unionfield->subfields) {
+            auto result = getParsedValue(subfield, varName);
+            if (result.has_value()) return result;
+        }
+    }
+    
+    return std::nullopt;
+}
 
 Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) {
     uint64_t bits = bitQueue.pop(field.sizeInBits);
@@ -272,26 +305,26 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
 }
 
 
-std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket& packetDef, BitQueue& bitQueue) {
+std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket& packetDef, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
     auto packet = std::make_shared<InterpretedPacket>();
     // Ensure the interpreted packet has its identifying fields set so
     // nested segments/packets are recognized when printing.
     packet->name = packetDef.name;
     packet->type = packetDef.type;
     for (const auto& fieldPtr : packetDef.fields) {
-        auto parsedField = interpretField(fieldPtr, bitQueue);
+        auto parsedField = interpretField(fieldPtr, bitQueue, packet);
         if (parsedField->type != NodeType::ROOT_NODE)
             packet->fields.push_back(parsedField);
     }
     return packet;
 }
 
-std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<ASTField> field, BitQueue& bitQueue) {
+std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<ASTField> field, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
     if (field->type == NodeType::PRIMITIVE) {
         auto primField = std::static_pointer_cast<ASTPrimitiveValue>(field);
 
-        if (astTree->properties[primField->datatype]) {
-            return interpretField(astTree->properties[primField->datatype], bitQueue);
+        if (astTree->properties[primField->datatype]) { // If segment exists?
+            return interpretField(astTree->properties[primField->datatype], bitQueue, rootNode);
         }
 
         InterpretedPrimitiveValue interpretedField;
@@ -307,7 +340,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         interpretedBitfield.name = bitfieldDef->name;
         interpretedBitfield.type = NodeType::BITFIELD;
         for (const auto& subfieldPtr : bitfieldDef->subfields) {
-            interpretedBitfield.subfields.push_back(interpretField(subfieldPtr, bitQueue));
+            interpretedBitfield.subfields.push_back(interpretField(subfieldPtr, bitQueue, rootNode));
         }
         return std::make_shared<InterpretedBitfield>(interpretedBitfield);
     } else if (field->type == NodeType::UNION) {
@@ -317,7 +350,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         interpretedUnionfield.type = NodeType::UNION;
         size_t unionSize = 0;
         for (const auto& subfieldPtr : unionfieldDef->subfields) {
-            auto interpretedSubfield = interpretField(subfieldPtr, bitQueue);
+            auto interpretedSubfield = interpretField(subfieldPtr, bitQueue, rootNode);
             interpretedUnionfield.subfields.push_back(interpretedSubfield);
             if (interpretedSubfield->type == NodeType::PRIMITIVE) {
                 auto subfieldPrim = std::static_pointer_cast<InterpretedUnionfield>(interpretedSubfield);
@@ -331,14 +364,33 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         return std::make_shared<InterpretedUnionfield>(interpretedUnionfield);
     } else if (field->type == NodeType::SEGMENT || field->type == NodeType::PACKET) {
         auto segment = std::static_pointer_cast<ASTPacket>(field);
-        return interpretPacket(*segment, bitQueue);
+        return interpretPacket(*segment, bitQueue, rootNode);
     } else if (field->type == NodeType::ARRAY) {
         auto arrayDef = std::static_pointer_cast<ASTArray>(field);
         InterpretedArray interpretedArray;
         interpretedArray.name = arrayDef->elementSchema->name;
         interpretedArray.type = NodeType::ARRAY;
+
+        if (arrayDef->dynamicLength != "") {
+            auto parsedVal = getParsedValue(rootNode, arrayDef->dynamicLength);
+            if (!parsedVal.has_value())
+                throw std::runtime_error("Var not defined.");
+            // Extract numeric value from Value variant
+            if (std::holds_alternative<uint64_t>(parsedVal.value())) {
+                arrayDef->length = std::get<uint64_t>(parsedVal.value());
+            } else if (std::holds_alternative<int64_t>(parsedVal.value())) {
+                arrayDef->length = static_cast<size_t>(std::get<int64_t>(parsedVal.value()));
+            } else if (std::holds_alternative<unsigned long>(parsedVal.value())) {
+                arrayDef->length = std::get<unsigned long>(parsedVal.value());
+            } else if (std::holds_alternative<signed long>(parsedVal.value())) {
+                arrayDef->length = static_cast<size_t>(std::get<signed long>(parsedVal.value()));
+            } else {
+                throw std::runtime_error("Dynamic array length must be a numeric value, not " + std::string(parsedVal.value().index() ? "complex" : "string"));
+            }
+        }
+
         for (size_t i = 0; i < arrayDef->length; i++) {
-            interpretedArray.list.push_back(interpretField(arrayDef->elementSchema, bitQueue));
+            interpretedArray.list.push_back(interpretField(arrayDef->elementSchema, bitQueue, rootNode));
         }
         return std::make_shared<InterpretedArray>(interpretedArray);
     }

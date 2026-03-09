@@ -21,6 +21,7 @@ class Mynic {
 
         bool loadFile(std::string& filename);
 
+        void printSchema();
         void printPacket(const std::string& packetName);
 
         DecodedPacket decodePacket(const std::string& strBytes, const std::string& packetName);
@@ -28,7 +29,6 @@ class Mynic {
 
     private:
         std::shared_ptr<ASTNode> rootNode;
-        std::unordered_map<std::string, ASTPacket> packets;
         AST ast;
         Interpreter interpreter;
 

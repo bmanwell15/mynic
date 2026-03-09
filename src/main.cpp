@@ -34,8 +34,7 @@ int main(int argc, char* argv[]) {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
     std::cout << "Loaded definition file in " << duration << " ms\n" << std::endl;
 
-    decoder.printPacket(PACKET_NAME);
-    decoder.printPacket("ImportedPacket");
+    decoder.printSchema();
 
     while (true) {
         std::cout << "mynic > ";

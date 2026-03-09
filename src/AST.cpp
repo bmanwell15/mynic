@@ -131,9 +131,17 @@ bool AST::isKnownType(const std::string& type) {
 }
 
 size_t AST::parseVariableCall() {
-    if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == INT_LITERAL) {
+    Token possibleVar = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+    if (possibleVar.type == INT_LITERAL) {
         return std::stoul(eatToken(INT_LITERAL).value);
     }
+
+    auto varIndex = definedVariables.find(possibleVar.value);
+    if (varIndex != definedVariables.end()) {
+        eatToken(IDENTIFIER);
+        return std::get<uint64_t>(definedVariables[possibleVar.value]);
+    }
+
     return 0;
 }
 
@@ -282,6 +290,8 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
         arr->elementSchema = field;
         arr->type = NodeType::ARRAY;
         size_t arrLength = parseVariableCall();
+        if (arrLength == 0)
+            arr->dynamicLength = eatToken(IDENTIFIER).value;
         arr->length = arrLength;
         eatToken(CLOSE_SQUARE_BRACKET);
         field->sizeInBits = primitiveBitSizes[field->datatype];

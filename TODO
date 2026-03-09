@@ -29,18 +29,15 @@ Loading Mynic File
         uint16 varName[13]; // 13 bytes * 16 bits (2 bytes) = 26 bytes
         bytes2 byteVarName[20]; // 20 groupings of 2 bytes = 40 bytes
     }
-
-TODO:
--------------------------------
 - Dynamic arrays:
     {
         uint8 count;
         uint16[count]; // If in same packet
-        // OR
-        uint16[PacketName.count]; // If in other packet
-
-        bytes[TO_END]; // Collects all of the bytes to the end of the packet -> Note that because there is not a number after "bytes", the array is assumed to be one large chunk of bytes (Same would go for bits[TO_END])
     }
+
+TODO:
+-------------------------------
+- Add Hex literals (0x00)
 - Complex Enums:
     {
         enum uint8 EVENTS {
@@ -52,7 +49,20 @@ TODO:
         EVENTS event;
         byte details[event.detailSize];
     }
-- Add Hex literals (0x00)
+- TO_END keyword, which is used in arrays, loops, etc
+{
+    bytes[TO_END]; // Collects all of the bytes to the end of the packet -> Note that because there is not a number after "bytes", the array is assumed to be one large chunk of bytes (Same would go for bits[TO_END])
+}
+- conditional branches (does not actually parse or move the bit index)
+    branch bool {
+        SEGMENT1 if true;
+        SEGMENT2 if false;
+        SEGMENT3 defaults;
+    }
+
+    branch { // byte is assumed;
+        SEGMENT1 if 0x00;
+    }
 - Repeat fields:
     {
         repeat (10) {
@@ -66,17 +76,6 @@ TODO:
         while (!EOF) { ... }
         while (currentByte != 0x00) { ... }
     }
-- conditional branches (does not actually parse or move the bit index)
-    branch bool {
-        SEGMENT1 if true;
-        SEGMENT2 if false;
-        SEGMENT3 defaults;
-    }
-
-    branch { // byte is assumed;
-        SEGMENT1 if 0x00;
-    }
-
 - Complex Conditional checking in branches:
     branch byte {
         SEGMENT1 if < 0xA3; // Condition logic include (> < >= <= == != %=)
