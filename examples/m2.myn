@@ -73,11 +73,16 @@ packet BasicPacket {
     //datetime64us datetimeMicroseconds;
     //datetime64ns datetimeNanoseconds;
 
-    timespan32s timespanWith32bits;
-    timespan64s timespanWith64bits;
-    timespan64ms timespanMilliseconds;
-    timespan64us timespanMicroseconds;
-    timespan64ns timespanNanoseconds;
+    //timespan32s timespanWith32bits;
+    //timespan64s timespanWith64bits;
+    //timespan64ms timespanMilliseconds;
+    //timespan64us timespanMicroseconds;
+    //timespan64ns timespanNanoseconds;
+
+    //bytes3 byte1;
+
+    uint8 arrOfInts[3];
+    bytes2 willWork[3];
 
 
 };

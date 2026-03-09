@@ -332,6 +332,15 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
     } else if (field->type == NodeType::SEGMENT || field->type == NodeType::PACKET) {
         auto segment = std::static_pointer_cast<ASTPacket>(field);
         return interpretPacket(*segment, bitQueue);
+    } else if (field->type == NodeType::ARRAY) {
+        auto arrayDef = std::static_pointer_cast<ASTArray>(field);
+        InterpretedArray interpretedArray;
+        interpretedArray.name = arrayDef->elementSchema->name;
+        interpretedArray.type = NodeType::ARRAY;
+        for (size_t i = 0; i < arrayDef->length; i++) {
+            interpretedArray.list.push_back(interpretField(arrayDef->elementSchema, bitQueue));
+        }
+        return std::make_shared<InterpretedArray>(interpretedArray);
     }
 
     return std::make_shared<InterpretedField>();

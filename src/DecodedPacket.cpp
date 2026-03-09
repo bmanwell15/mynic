@@ -11,6 +11,27 @@ void DecodedPacket::print() const {
     print(rootField, 0);
 }
 
+void printPrimitive(Value v) {
+    std::visit([&](auto&& value) {
+        using T = std::decay_t<decltype(value)>;
+
+        if constexpr (std::is_same_v<T, bool>) {
+            std::cout << (value ? "true" : "false");
+        } else if constexpr (std::is_same_v<T, std::string>) {
+            std::cout << value;
+        } else if constexpr (std::is_same_v<T, uint8_t>) { // byte
+            std::cout << "0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(value);
+            std::cout << std::dec;
+        } else if constexpr (std::is_same_v<T, int8_t>) {
+            std::cout << static_cast<int>(value);
+        } else if constexpr (std::is_arithmetic_v<T>) {
+            std::cout << value;
+        } else {
+            static_assert(!sizeof(T), "Unhandled variant type");
+        }
+    }, v);
+}
+
 void DecodedPacket::print(const std::shared_ptr<InterpretedField>& field, int indent) const {
     std::string indentStr(indent * 3, ' ');
     if (field->type == NodeType::PACKET || field->type == NodeType::SEGMENT) {
@@ -24,24 +45,7 @@ void DecodedPacket::print(const std::shared_ptr<InterpretedField>& field, int in
         auto primField = std::static_pointer_cast<InterpretedPrimitiveValue>(field);
         if (primField->settings && primField->settings->isHidden) return;
         std::cout << indentStr << primField->name << " = ";
-        std::visit([&](auto&& value) {
-            using T = std::decay_t<decltype(value)>;
-
-            if constexpr (std::is_same_v<T, bool>) {
-                std::cout << (value ? "true" : "false");
-            } else if constexpr (std::is_same_v<T, std::string>) {
-                std::cout << value;
-            } else if constexpr (std::is_same_v<T, uint8_t>) { // byte
-                std::cout << "0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(value);
-                std::cout << std::dec;
-            } else if constexpr (std::is_same_v<T, int8_t>) {
-                std::cout << static_cast<int>(value);
-            } else if constexpr (std::is_arithmetic_v<T>) {
-                std::cout << value;
-            } else {
-                static_assert(!sizeof(T), "Unhandled variant type");
-            }
-        }, primField->value);
+        printPrimitive(primField->value);
 
         if (primField->settings) std::cout << ' ' << primField->settings->units;
     
@@ -60,5 +64,15 @@ void DecodedPacket::print(const std::shared_ptr<InterpretedField>& field, int in
             print(subfield, indent + 1);
         }
         std::cout << indentStr << "}\n";
+    } else if (field->type == NodeType::ARRAY) {
+        auto arrayfield = std::static_pointer_cast<InterpretedArray>(field);
+        std::cout << indentStr << arrayfield->name << " = [ ";
+        for (const auto& listElement : arrayfield->list) {
+            if (listElement->type != NodeType::PRIMITIVE) {throw std::runtime_error("Element not primitive.");}
+            auto asPrimitive = std::static_pointer_cast<InterpretedPrimitiveValue>(listElement);
+            printPrimitive(asPrimitive->value);
+            std::cout << ' ';
+        }
+        std::cout << "]\n";
     }
 }

@@ -22,16 +22,16 @@ Loading Mynic File
 - segment definitions
 - Branches to other packets/segment
 - bitsX datatype, similar to uint, X can be any positive int -> Prints string of bits
+- bytesX datatype, where X is the number of BYTES
 - datetime & timespan std types
+- Static Arrays:
+    {
+        uint16 varName[13]; // 13 bytes * 16 bits (2 bytes) = 26 bytes
+        bytes2 byteVarName[20]; // 20 groupings of 2 bytes = 40 bytes
+    }
 
 TODO:
 -------------------------------
-- bytesX datatype, where X is the number of BYTES
-- Static Arrays:
-    {
-        uint16[13]; // 13 bytes * 16 bits (2 bytes) = 26 bytes
-        bytes2[20]; // 20 groupings of 2 bytes = 40 bytes
-    }
 - Dynamic arrays:
     {
         uint8 count;
@@ -39,7 +39,7 @@ TODO:
         // OR
         uint16[PacketName.count]; // If in other packet
 
-        bytes[TO_END]; // Collects all of the bytes to the end of the packet -> Note that because there is not a number after "bytes", the array is assumed to be one large chunk of bytes (Same would go for bits[24])
+        bytes[TO_END]; // Collects all of the bytes to the end of the packet -> Note that because there is not a number after "bytes", the array is assumed to be one large chunk of bytes (Same would go for bits[TO_END])
     }
 - Complex Enums:
     {

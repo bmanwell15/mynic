@@ -36,6 +36,10 @@ struct InterpretedUnionfield : public InterpretedField {
     std::string name;
     std::vector<std::shared_ptr<InterpretedField>> subfields;
 };
+
+struct InterpretedArray : public InterpretedField {
+    std::vector<std::shared_ptr<InterpretedField>> list;
+};
                     
 
 class DecodedPacket {

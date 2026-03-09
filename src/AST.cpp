@@ -130,6 +130,13 @@ bool AST::isKnownType(const std::string& type) {
     return primitiveBitSizes.count(type) || isDynamicSizeType(type) || rootNode->properties[type];
 }
 
+size_t AST::parseVariableCall() {
+    if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == INT_LITERAL) {
+        return std::stoul(eatToken(INT_LITERAL).value);
+    }
+    return 0;
+}
+
 std::shared_ptr<ASTField> AST::parseField() {
     const Token& token = tokens[masterIndex];
 
@@ -247,38 +254,51 @@ std::shared_ptr<ASTField> AST::parseTypeDef() {
 }
 
 std::shared_ptr<ASTField> AST::parsePrimitive() {
-    ASTPrimitiveValue field;
-    field.datatype = eatToken(IDENTIFIER).value;
+    auto field = std::make_shared<ASTPrimitiveValue>();
+    field->datatype = eatToken(IDENTIFIER).value;
 
-    if (isDynamicSizeType(field.datatype)) {
-        size_t pos = field.datatype.find_first_of("0123456789");
+    if (isDynamicSizeType(field->datatype)) {
+        size_t pos = field->datatype.find_first_of("0123456789");
         if (pos != std::string::npos) {
-            size_t bits = std::stoi(field.datatype.substr(pos));
-            if (field.datatype.starts_with("bytes")) bits *= 8;
+            size_t bits = std::stoi(field->datatype.substr(pos));
+            if (field->datatype.starts_with("bytes")) bits *= 8;
             if (bits == 0 || bits > 64) {
-                ErrorHandler::throwError("Integer type width must be between 1 and 64 bits: " + field.datatype, tokens, masterIndex - 1);
+                ErrorHandler::throwError("Integer type width must be between 1 and 64 bits: " + field->datatype, tokens, masterIndex - 1);
             }
-            primitiveBitSizes[field.datatype] = bits;
+            primitiveBitSizes[field->datatype] = bits;
         }
     }
 
-    if (!isKnownType(field.datatype)) {
-        ErrorHandler::throwError("Unknown primitive datatype: " + field.datatype, tokens, masterIndex - 1);
+    if (!isKnownType(field->datatype)) {
+        ErrorHandler::throwError("Unknown primitive datatype: " + field->datatype, tokens, masterIndex - 1);
     }
 
-    field.name = eatToken(IDENTIFIER).value;
-    field.type = NodeType::PRIMITIVE;
+    field->name = eatToken(IDENTIFIER).value;
+    field->type = NodeType::PRIMITIVE;
+
+    if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == OPEN_SQUARE_BRACKET) { // Means array
+        eatToken(OPEN_SQUARE_BRACKET);
+        auto arr = std::make_shared<ASTArray>();
+        arr->elementSchema = field;
+        arr->type = NodeType::ARRAY;
+        size_t arrLength = parseVariableCall();
+        arr->length = arrLength;
+        eatToken(CLOSE_SQUARE_BRACKET);
+        field->sizeInBits = primitiveBitSizes[field->datatype];
+        field->settings = parsePrimitiveSettings();
+        return arr;
+    }
 
     if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == COLON) {
         eatToken(COLON);
-        field.sizeInBits = std::stoul(eatToken(INT_LITERAL).value);
-        field.settings = parsePrimitiveSettings();
-        return std::make_shared<ASTPrimitiveValue>(field);
+        field->sizeInBits = std::stoul(eatToken(INT_LITERAL).value);
+        field->settings = parsePrimitiveSettings();
+        return field;
     }
 
-    field.sizeInBits = primitiveBitSizes[field.datatype];
-    field.settings = parsePrimitiveSettings();
-    return std::make_shared<ASTPrimitiveValue>(field);
+    field->sizeInBits = primitiveBitSizes[field->datatype];
+    field->settings = parsePrimitiveSettings();
+    return field;
 }
 
 std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {

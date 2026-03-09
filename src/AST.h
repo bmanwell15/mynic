@@ -84,6 +84,11 @@ struct ASTDefault : public ASTField {
     std::shared_ptr<ASTPrimitiveValueSettings> settings;
 };
 
+struct ASTArray : public ASTField {
+    size_t length;
+    std::shared_ptr<ASTPrimitiveValue> elementSchema;
+};
+
 struct ASTPacket : public ASTField {
     std::string name;
     std::vector<std::shared_ptr<ASTField>> fields;
@@ -116,6 +121,7 @@ class AST {
         Token eatToken(std::initializer_list<TokenType> types);
         void eatOptionalToken(std::initializer_list<TokenType> types);
         void skipWhiteSpace(bool includeCommas=false, bool includeSemiColons=false);
+        size_t parseVariableCall();
 
         // Parsing functions
         std::shared_ptr<ASTField> parseField();
