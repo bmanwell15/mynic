@@ -59,16 +59,17 @@ struct ASTTypeDef : public ASTField {
     std::string existingTypeName;
 };
 
-struct ASTVariable : public ASTField {
+struct ASTEnumVariable : public ASTField {
     std::string varName;
     Value varValue;
+    std::unordered_map<std::string, Value> enumAttributes;
 };
 
 struct ASTEnum : public ASTField {
     std::string datatype;
     std::string name;
     size_t sizeInBits;
-    std::vector<std::shared_ptr<ASTVariable>> variables;
+    std::vector<std::shared_ptr<ASTEnumVariable>> variables;
 };
 
 struct ASTBitfield : public ASTField {
@@ -133,7 +134,7 @@ class AST {
         std::shared_ptr<ASTPrimitiveValueSettings> parsePrimitiveSettings();
         std::shared_ptr<ASTField> parseImport();
         std::shared_ptr<ASTEnum> parseEnum();
-        std::shared_ptr<ASTVariable> parseVarDefinition(ASTEnum* parent=nullptr);
+        std::shared_ptr<ASTEnumVariable> parseEnumVarDefinition(ASTEnum* parent=nullptr);
         std::shared_ptr<ASTField> parseDefine();
         std::shared_ptr<ASTDefault> parseDefault();
         std::shared_ptr<ASTBitfield> parseBitfield();

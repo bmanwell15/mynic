@@ -11,20 +11,21 @@ enum uint8 BasicEnum {
 }
 
 enum uint16 ComplexEnum {
-    EVENT_ZERO
-    EVENT_ONE
-    EVENT_TWO
-    EVENT_THREE
-    EVENT_FOUR
-    EVENT_FIVE
-    EVENT_SIX
-    EVENT_SEVEN
-    EVENT_EIGHT
-    EVENT_NINE
-    EVENT_TEN
+    EVENT_ZERO      {attr1: 7, attr2: 3}
+    EVENT_ONE       {attr1: 3, attr2: 8}
+    EVENT_TWO       {attr1: 5, attr2: 3}
+    EVENT_THREE     {attr1: 1, attr2: 1}
+    EVENT_FOUR      {attr1: 10, attr2: 2}
+    EVENT_FIVE      {attr1: 42, attr2: 5}
+    EVENT_SIX       {attr1: 92, attr2: 3}
+    EVENT_SEVEN     {attr1: 74, attr2: 4}
+    EVENT_EIGHT     {attr1: 58, attr2: 7}
+    EVENT_NINE      {attr1: 94, attr2: 9}
+    EVENT_TEN       {attr1: 12, attr2: 0}
 }
 
 packet BasicPacket {
     BasicEnum basicEnum;
-    ComplexEnum eventEnum;
+    ComplexEnum complexEnum;
+    byte arrByEnum[complexEnum.attr2];
 }

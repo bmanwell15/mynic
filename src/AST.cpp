@@ -288,8 +288,13 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
         arr->elementSchema = field;
         arr->type = NodeType::ARRAY;
         size_t arrLength = parseVariableCall();
-        if (arrLength == 0)
+        if (arrLength == 0) {
             arr->dynamicLength = eatToken(IDENTIFIER).value;
+            if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == PERIOD) { // if variable takes the form (enum.attribute)
+                arr->dynamicLength += eatToken(PERIOD).value;
+                arr->dynamicLength += eatToken(IDENTIFIER).value;
+            }
+        }
         arr->length = arrLength;
         eatToken(CLOSE_SQUARE_BRACKET);
         field->sizeInBits = primitiveBitSizes[field->datatype];
@@ -379,24 +384,40 @@ Value convertTokenValue(Token token) {
     throw std::runtime_error("Invalid type in convertTokenValue()");
 }
 
-std::shared_ptr<ASTVariable> AST::parseVarDefinition(ASTEnum* enumVar) {
-    ASTVariable var;
+std::shared_ptr<ASTEnumVariable> AST::parseEnumVarDefinition(ASTEnum* enumVar) {
+    ASTEnumVariable var;
     var.varName = eatToken(IDENTIFIER).value;
-    Token possibleEqualSign = eatToken({COMMA, EQUALS, CLOSE_BRACKET, NEW_LINE});
-    if (possibleEqualSign.type != EQUALS) { // If var defined like VAR_NAME, (Implicit value of 0 or next in Enum)
-        if (!enumVar) ErrorHandler::throwError("Implicit decloration must be inside of an enum", tokens, masterIndex);
+    Token nextToken = eatToken({COMMA, EQUALS, CLOSE_BRACKET, NEW_LINE, OPEN_BRACKET});
 
+    if (nextToken.type == EQUALS) { // Explicit decloration
+        Token varValToken = eatToken({BOOL_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL});
+        var.varValue = convertTokenValue(varValToken);
+    } else {
         if (enumVar->variables.size())
             var.varValue = std::get<uint64_t>(enumVar->variables.back()->varValue) + 1;
         else
             var.varValue = 0ULL;
-        return std::make_shared<ASTVariable>(var);
     }
-    // Assumed explicit decloration here (VAR_NAME = VAL)
-    Token varValToken = eatToken({INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL, BOOL_LITERAL});
-    var.varValue = convertTokenValue(varValToken);
-    eatToken({COMMA, CLOSE_BRACKET, NEW_LINE});
-    return std::make_shared<ASTVariable>(var);
+
+    // Complex enum parsing
+    if (nextToken.type == OPEN_BRACKET || Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == OPEN_BRACKET) { 
+        eatOptionalToken({OPEN_BRACKET}); // Will not exist if nextToken.type == OPEN_BRACKET
+        while (true) {
+            std::string attributeName = eatToken(IDENTIFIER).value;
+            eatToken(COLON);
+            Value attributeValue = convertTokenValue(eatToken({BOOL_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL}));
+
+            var.enumAttributes[attributeName] = attributeValue;
+
+            Token nextToken = eatToken({COMMA, NEW_LINE, CLOSE_BRACKET});
+            if (nextToken.type == CLOSE_BRACKET || Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CLOSE_BRACKET) {
+                break;
+            }
+        }
+    }
+
+    eatOptionalToken({COMMA, CLOSE_BRACKET});
+    return std::make_shared<ASTEnumVariable>(var);
 }
 
 std::shared_ptr<ASTEnum> AST::parseEnum() {
@@ -417,7 +438,7 @@ std::shared_ptr<ASTEnum> AST::parseEnum() {
 
     blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
     while (masterIndex < tokens.size() && tokens[masterIndex].blockDepth >= currentBlockDepth) {
-        std::shared_ptr<ASTVariable> var = parseVarDefinition(&enumVar);
+        std::shared_ptr<ASTEnumVariable> var = parseEnumVarDefinition(&enumVar);
         enumVar.variables.push_back(var);
     }
 

@@ -25,6 +25,7 @@ struct InterpretedPacket : public InterpretedField {
 struct InterpretedPrimitiveValue : public InterpretedField {
     Value value;
     std::shared_ptr<ASTPrimitiveValueSettings> settings;
+    std::string datatype;
 };
 
 struct InterpretedBitfield : public InterpretedField {

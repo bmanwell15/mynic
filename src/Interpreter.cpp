@@ -146,7 +146,69 @@ std::string formatDuration(int64_t ns) {
     return out.str();
 }
 
+std::shared_ptr<InterpretedField> Interpreter::findField(const std::shared_ptr<InterpretedField>& field, const std::string& name) {
+    if (field->name == name) {
+        return field;
+    }
+    
+    // Recursively search in nested structures
+    if (field->type == NodeType::PACKET || field->type == NodeType::SEGMENT) {
+        auto packet = std::static_pointer_cast<InterpretedPacket>(field);
+        for (const auto& subfield : packet->fields) {
+            auto result = findField(subfield, name);
+            if (result) return result;
+        }
+    } else if (field->type == NodeType::BITFIELD) {
+        auto bitfield = std::static_pointer_cast<InterpretedBitfield>(field);
+        for (const auto& subfield : bitfield->subfields) {
+            auto result = findField(subfield, name);
+            if (result) return result;
+        }
+    } else if (field->type == NodeType::UNION) {
+        auto unionfield = std::static_pointer_cast<InterpretedUnionfield>(field);
+        for (const auto& subfield : unionfield->subfields) {
+            auto result = findField(subfield, name);
+            if (result) return result;
+        }
+    } else if (field->type == NodeType::ARRAY) {
+        auto array = std::static_pointer_cast<InterpretedArray>(field);
+        for (const auto& subfield : array->list) {
+            auto result = findField(subfield, name);
+            if (result) return result;
+        }
+    }
+    
+    return nullptr;
+}
+
 std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName) {
+    auto foundPeriodIndex = varName.find('.');
+    if (foundPeriodIndex != std::string::npos) { // Enum variable lookup
+        std::string enumName = varName.substr(0, foundPeriodIndex); // Name of the variable that is assumed to have been previously parsed
+        std::string attributeName = varName.substr(foundPeriodIndex + 1); // Attribute of that enum based on the parsed value
+        
+        auto enumField = findField(field, enumName);
+        if (!enumField || enumField->type != NodeType::PRIMITIVE) return std::nullopt;
+        
+        auto primField = std::static_pointer_cast<InterpretedPrimitiveValue>(enumField);
+        if (!std::holds_alternative<std::string>(primField->value)) return std::nullopt;
+        
+        std::string enumValueName = std::get<std::string>(primField->value);
+        
+        // Find the enum definition
+        for (const auto& enumDef : enums) {
+            if (enumDef->name == primField->datatype) {
+                for (const auto& var : enumDef->variables) {
+                    if (var->varName == enumValueName) {
+                        auto it = var->enumAttributes.find(attributeName);
+                        if (it != var->enumAttributes.end()) return it->second;
+                    }
+                }
+            }
+        }
+        return std::nullopt;
+    }
+
     if (field->name == varName) {
         if (field->type == NodeType::PRIMITIVE) {
             auto primValue = std::static_pointer_cast<InterpretedPrimitiveValue>(field);
@@ -332,6 +394,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         interpretedField.sizeInBytes = primField->sizeInBits / 8;
         interpretedField.type = NodeType::PRIMITIVE;
         interpretedField.settings = primField->settings;
+        interpretedField.datatype = primField->datatype;
         interpretedField.value = interpretValue(*primField, bitQueue);
         return std::make_shared<InterpretedPrimitiveValue>(interpretedField);
     } else if (field->type == NodeType::BITFIELD) {
@@ -353,7 +416,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
             auto interpretedSubfield = interpretField(subfieldPtr, bitQueue, rootNode);
             interpretedUnionfield.subfields.push_back(interpretedSubfield);
             if (interpretedSubfield->type == NodeType::PRIMITIVE) {
-                auto subfieldPrim = std::static_pointer_cast<InterpretedUnionfield>(interpretedSubfield);
+                auto subfieldPrim = std::static_pointer_cast<InterpretedPrimitiveValue>(interpretedSubfield);
                 if (unionSize == 0) unionSize = subfieldPrim->sizeInBytes * 8;
                 bitQueue.rewind(unionSize); // Rewind to interpret again
             } else {

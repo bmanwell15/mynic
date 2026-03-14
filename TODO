@@ -35,9 +35,6 @@ Loading Mynic File
         uint16[count]; // If in same packet
     }
 - Add Hex literals (0x00)
-
-TODO:
--------------------------------
 - Complex Enums:
     {
         enum uint8 EVENTS {
@@ -49,7 +46,11 @@ TODO:
         EVENTS event;
         byte details[event.detailSize];
     }
+
+TODO:
+-------------------------------
 - TO_END keyword, which is used in arrays, loops, etc
+- Change DecodedPacket printing to comply with JSON standards. Make toString/json() function as well, then change print to simply print toString();
 {
     bytes[TO_END]; // Collects all of the bytes to the end of the packet -> Note that because there is not a number after "bytes", the array is assumed to be one large chunk of bytes (Same would go for bits[TO_END])
 }
