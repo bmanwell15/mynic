@@ -132,9 +132,7 @@ bool AST::isKnownType(const std::string& type) {
 
 size_t AST::parseVariableCall() {
     Token possibleVar = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
-    if (possibleVar.type == INT_LITERAL) {
-        return std::stoul(eatToken(INT_LITERAL).value);
-    }
+    if (possibleVar.type == INT_LITERAL) return std::stoul(eatToken(INT_LITERAL).value);
 
     auto varIndex = definedVariables.find(possibleVar.value);
     if (varIndex != definedVariables.end()) {
@@ -392,7 +390,6 @@ std::shared_ptr<ASTVariable> AST::parseVarDefinition(ASTEnum* enumVar) {
             var.varValue = std::get<uint64_t>(enumVar->variables.back()->varValue) + 1;
         else
             var.varValue = 0ULL;
-        // if (tokens[masterIndex + 1].type == CLOSE_BRACKET) eatToken(CLOSE_BRACKET);
         return std::make_shared<ASTVariable>(var);
     }
     // Assumed explicit decloration here (VAR_NAME = VAL)
@@ -410,6 +407,11 @@ std::shared_ptr<ASTEnum> AST::parseEnum() {
     if (enumVar.datatype.substr(0, 4) != "uint")
         ErrorHandler::throwError("Enums must have an uint type, got " + enumVar.datatype + " instead.", tokens, masterIndex);
 
+    size_t bitSize = primitiveBitSizes[enumVar.datatype];
+    if (enumVar.datatype.size() >= 4) {
+        bitSize = std::stoul(enumVar.datatype.substr(4));
+    }
+    enumVar.sizeInBits = bitSize;
     enumVar.name = eatToken(IDENTIFIER).value;
     eatToken(OPEN_BRACKET);
 
@@ -419,7 +421,7 @@ std::shared_ptr<ASTEnum> AST::parseEnum() {
         enumVar.variables.push_back(var);
     }
 
-    primitiveBitSizes[enumVar.name] = primitiveBitSizes[enumVar.datatype];
+    primitiveBitSizes[enumVar.name] = enumVar.sizeInBits;
     return std::make_shared<ASTEnum>(enumVar);
 }
 

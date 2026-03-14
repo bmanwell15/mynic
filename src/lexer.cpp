@@ -74,26 +74,18 @@ std::vector<Token> Lexer::tokenize(const std::string content) {
             ttype = LOGIC_GATE;
             std::string gate = std::string(1, ch) + std::string(1, content[++i]);
             tokens.push_back(createToken(gate, ttype, blockDepth, lineNumber)); 
-        } else if ((ch == '+' && content[i + 1] == '+') || (ch == '-' && content[i + 1] == '-')) { // HANDLE ASSIGNMENT OPERATOR (++ & --)
-            ttype = INCREMENT_BY_1;
-            std::string oporation = std::string(1, ch) + std::string(1, content[++i]);
-            tokens.push_back(createToken(oporation, ttype, blockDepth, lineNumber));
         } else if ((ch == '+' || ch == '-' || ch == '*' || ch == '/') && content[i + 1] != '=') { // HANDLE BINARY OPERATORS
             ttype = BINARY_OPERATOR;
             tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
-        } else if ((ch == '+' || ch == '-' || ch == '*' || ch == '/') && content[i + 1] == '=') { // HANDLE ASSIGNMENT OPERATOR (+=, -=, *=, ...)
-            ttype = VARIABLE_ASSIGNMENT_OPERATOR;
-            std::string oporation = std::string(1, ch) + std::string(1, content[++i]);
-            tokens.push_back(createToken(oporation, ttype, blockDepth, lineNumber));
         } else if (ch == '=' && content[i + 1] != '=') { // Make sure it's not double equals '=='
             ttype = EQUALS;
             tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
         } else if ((ch == '=' || ch == '>' || ch == '<' || ch == '!') && content[i + 1] == '=') { // ALL conditions that are 2 chars long (<=, >=, ==, !=)
-            ttype = CONDITION;
+            ttype = CONDITION_OPERATOR;
             std::string doubleEquals = std::string(1, ch) + std::string(1, content[++i]);
             tokens.push_back(createToken(doubleEquals, ttype, blockDepth, lineNumber));
         } else if (ch == '<' || ch == '>') { // ALL conditions that are only 1 char long (>, <)
-            ttype = CONDITION;
+            ttype = CONDITION_OPERATOR;
             tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
         } else if (ch == ';') {
             ttype = SEMI_COLON;
@@ -145,6 +137,18 @@ std::vector<Token> Lexer::tokenize(const std::string content) {
             ttype = BOOL_LITERAL;
             tokens.push_back(createToken(content.substr(i, 5), ttype, blockDepth, lineNumber));
             i += 4;
+        } else if (content.substr(i, 2) == "0x") {
+            ttype = INT_LITERAL; // Prep for converting the hex string to an unsigned int
+            i += 2;
+            std::string hexValue = "";
+            ch = content[i];
+            while (i < content.size() && isxdigit(ch)) {
+                hexValue += ch;
+                ch = content[++i];
+            }
+
+            unsigned long long asInt = std::stoull(hexValue, nullptr, 16);
+            tokens.push_back(createToken(std::to_string(asInt), ttype, blockDepth, lineNumber));
         } else { // HANDLE MULTI-LETTERED OPERATORS
             if (ch == '\"') { // Make a string literal
                 std::string str = "\"";
@@ -158,36 +162,27 @@ std::vector<Token> Lexer::tokenize(const std::string content) {
                 
                 ttype = STRING_LITERAL;
                 tokens.push_back(createToken(str, ttype, blockDepth, lineNumber));
-
             } else if (isalpha(ch) || ch == '_') { // Make an IDENTIFIER
                 std::string word = "";
-                while ((isalpha(ch) || isdigit(ch) || ch == '_') && i < content.size()) {
+                while (i < content.size() && (isalpha(ch) || isdigit(ch) || ch == '_')) {
                     word += std::string(1, ch);
                     i++;
                     ch = content[i];
                 }
                 i--;
-                
                 ttype = IDENTIFIER;
                 tokens.push_back(createToken(word, ttype, blockDepth, lineNumber));
-
             } else if (isdigit(ch)) { // Get numbers, ints and doubles
                 std::string num = "";
                 bool isDouble = false;
-                while ((isdigit(ch) || ch == '-' || ch == '.') && i < content.size()) {
+                while (i < content.size() && (isdigit(ch) || ch == '-' || ch == '.')) {
                     if (ch == '.') {isDouble = true;}
                     num += std::string(1, ch);
                     i++;
                     ch = content[i];
                 }
                 i--;
-                
-                if (isDouble) {
-                    ttype = DOUBLE_LITERAL;
-                } else {
-                    ttype = INT_LITERAL;
-                }
-
+                ttype = isDouble ? DOUBLE_LITERAL : INT_LITERAL;
                 tokens.push_back(createToken(num, ttype, blockDepth, lineNumber));
             }
         }

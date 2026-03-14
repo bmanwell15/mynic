@@ -34,10 +34,10 @@ Loading Mynic File
         uint8 count;
         uint16[count]; // If in same packet
     }
+- Add Hex literals (0x00)
 
 TODO:
 -------------------------------
-- Add Hex literals (0x00)
 - Complex Enums:
     {
         enum uint8 EVENTS {

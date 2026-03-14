@@ -1,0 +1,30 @@
+/*
+    This file tests all functionalities of the complex enum. The complex enum is a cornerstone of the Mynic functionality, so it is expected to hold many features.
+*/
+
+
+enum uint8 BasicEnum {
+    ZERO = 0,
+    ONE,
+    TWO
+    THREE
+}
+
+enum uint16 ComplexEnum {
+    EVENT_ZERO
+    EVENT_ONE
+    EVENT_TWO
+    EVENT_THREE
+    EVENT_FOUR
+    EVENT_FIVE
+    EVENT_SIX
+    EVENT_SEVEN
+    EVENT_EIGHT
+    EVENT_NINE
+    EVENT_TEN
+}
+
+packet BasicPacket {
+    BasicEnum basicEnum;
+    ComplexEnum eventEnum;
+}

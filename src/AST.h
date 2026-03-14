@@ -67,6 +67,7 @@ struct ASTVariable : public ASTField {
 struct ASTEnum : public ASTField {
     std::string datatype;
     std::string name;
+    size_t sizeInBits;
     std::vector<std::shared_ptr<ASTVariable>> variables;
 };
 

@@ -16,7 +16,7 @@ enum uint8 EnumName {
     THREE
 }
 
-define ARR_SIZE 2
+define ARR_SIZE 0x0A
 
 typedef bool byte_t
 
@@ -32,9 +32,9 @@ packet SubPacket {
     uint8 fromSubPacket;
 }
 
-packet SplitPacket {
-    uint8 arrLength;
-}
+// packet SplitPacket {
+//     uint8 arrLength;
+// }
 
 packet BasicPacket {
     // default {
@@ -88,9 +88,10 @@ packet BasicPacket {
     //uint8 arrOfInts[3];
     //bytes2 willWork[3];
 
-    SplitPacket p;
-    byte payload[arrLength];
-    //byte fromVar[ARR_SIZE];
+    // SplitPacket p;
+    // byte payload[arrLength];
+    // byte fromVar[ARR_SIZE];
+
 
 
 };

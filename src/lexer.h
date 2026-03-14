@@ -15,34 +15,15 @@ enum TokenType { // Holds all of the allowed token values for the language
     SINGLE_LINED_COMMENT,
     MULTI_LINED_COMMENT,
     BOOL_LITERAL,
+    HEX_LITERAL,
     INT_LITERAL,
     DOUBLE_LITERAL,
     STRING_LITERAL,
-    
-    BOOL_DECLORATION,
-    INT_DECLORATION,
-    DOUBLE_DECLORATION,
-    STRING_DECLORATION,
-    DYNAMIC_DECLORATION,
 
-    VARIABLE_CALL, // Variable call of any type
-    VARIABLE_ASSIGNMENT_OPERATOR, // '+=', '-=', ...
     INCREMENT_BY_1, // ++ & --
     BINARY_OPERATOR, // +, -, *, /
-
-    CONDITION,
     LOGIC_GATE, // &&, ||, !
-    IF_STATEMENT,
-    WHILE_LOOP,
-    FOR_LOOP,
-
-    // Keywords:
-    CONTINUE,
-    BREAK,
-    RETURN,
-    DELETE,
-    IMPORT,
-    
+    CONDITION_OPERATOR, // ==, !=, <=, >=, >, <
     IDENTIFIER, // Any string of text, such as variables, keywords, functions, etc. The IDENTIFIER is specified in the AST
     
     EQUALS, // Can be an assignment operator, such as "x = 10" but can also be used for decloration "int x = 10"
