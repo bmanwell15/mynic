@@ -50,7 +50,6 @@ Loading Mynic File
 TODO:
 -------------------------------
 - TO_END keyword, which is used in arrays, loops, etc
-- Change DecodedPacket printing to comply with JSON standards. Make toString/json() function as well, then change print to simply print toString();
 {
     bytes[TO_END]; // Collects all of the bytes to the end of the packet -> Note that because there is not a number after "bytes", the array is assumed to be one large chunk of bytes (Same would go for bits[TO_END])
 }
@@ -64,6 +63,11 @@ TODO:
     branch { // byte is assumed;
         SEGMENT1 if 0x00;
     }
+- Complex Conditional checking in branches:
+    branch byte {
+        SEGMENT1 if < 0xA3; // Condition logic include (> < >= <= == != %=)
+        SEGMENT2 if >= VAR_DEF; // Include operations like + - * / %?
+    }
 - Repeat fields:
     {
         repeat (10) {
@@ -76,11 +80,6 @@ TODO:
         
         while (!EOF) { ... }
         while (currentByte != 0x00) { ... }
-    }
-- Complex Conditional checking in branches:
-    branch byte {
-        SEGMENT1 if < 0xA3; // Condition logic include (> < >= <= == != %=)
-        SEGMENT2 if >= VAR_DEF; // Include operations like + - * / %?
     }
 
 - Checksum (datatype?) -> Evaluates the checksum of the packet and returns true/false in another field acordingly. MUST include all major checksum formats
@@ -98,15 +97,16 @@ TODO:
         interpret 656ED7 as PacketName
         ("004FE3", "PacketName")
     }
-- File output assigning:
+- File output assigning in default block:
     {
-        dump PacketName1, PacketName2 as "JSON" // OR
-
-        dump * as "JSON" { // Each packet gets its own file with the file name being the timestamp
-            includeTimestamp: true,
-            includeRawBytes: true,
-            includePacketName: true,
-            destinationFolder: "./folder/path"
+        packet dPacket {
+            default {
+                includeTimestamp: true,
+                includeRawBytes: true,
+                includePacketName: true,
+                destinationFolder: "./folder/path"
+            }
+            [ ... ]
         }
     }
 

@@ -46,5 +46,6 @@ int main(int argc, char* argv[]) {
 
         result.print();
     }
+    std::cout << "bye\n";
     return 0;
 }

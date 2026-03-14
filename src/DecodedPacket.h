@@ -49,9 +49,10 @@ class DecodedPacket {
         std::vector<uint8_t> rawBytes;
         std::shared_ptr<InterpretedPacket> rootField;
         void print() const;
+        std::string toJson() const;
     
     private:
-        void print(const std::shared_ptr<InterpretedField>& field, int indent) const;
+        void toJson(std::stringstream& ss, const std::shared_ptr<InterpretedField>& field, int indent) const;
         
 };
 
