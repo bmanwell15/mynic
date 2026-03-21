@@ -35,6 +35,15 @@ enum class NodeType {
     DEFAULT_BLOCK
 };
 
+enum class ConditionOperators {
+    EQUAL,
+    NOT_EQUAL,
+    LESS_THAN,
+    GREATER_THAN,
+    LESS_EQUAL_THAN,
+    GREATER_EQUAL_THAN
+};
+
 
 struct ASTField {
     NodeType type;
@@ -80,6 +89,17 @@ struct ASTBitfield : public ASTField {
 struct ASTUnion : public ASTField {
     std::string name;
     std::vector<std::shared_ptr<ASTField>> subfields;
+};
+
+struct ASTCondition : public ASTField {
+    ConditionOperators conditionOperator;
+    Value parsedCheckValue;
+};
+
+struct ASTBranch : public ASTField {
+    ASTPrimitiveValue parseAs;
+    std::vector<std::pair<std::string, std::shared_ptr<ASTCondition>>> destinationsAndConditions; // std::pair<destination, condition>
+    std::string destinationDefault;
 };
 
 struct ASTDefault : public ASTField {
@@ -139,6 +159,7 @@ class AST {
         std::shared_ptr<ASTDefault> parseDefault();
         std::shared_ptr<ASTBitfield> parseBitfield();
         std::shared_ptr<ASTUnion> parseUnion();
+        std::shared_ptr<ASTBranch> parseBranch();
 };
 
 #endif

@@ -7,9 +7,10 @@ AST::AST(Mynic* myn) {
     tokens = {};
     rootNode = std::make_shared<ASTNode>(ASTNode{NodeType::ROOT_NODE, {}});
     primitiveBitSizes = {
-        {"bit", 0},
-        {"bits", 0},
+        {"bit", 1},
+        {"bits", 1},
         {"byte", 8},
+        {"bytes", 8},
         {"bool", 8},
         {"short", 16},
         {"ushort", 16},
@@ -34,6 +35,12 @@ AST::AST(Mynic* myn) {
         {"timespan64ms", 64},
         {"timespan64us", 64},
         {"timespan64ns", 64},
+
+        // IPs
+        {"ipv4Address", 32},
+        {"ipAddress32", 32},
+        {"ipv6Address", 64}, // Really 128, but cannot take more than 64 bits as of now
+        {"ipAddress128", 64}
     };
     mynic = myn;
     currentPacket = nullptr;
@@ -183,6 +190,10 @@ std::shared_ptr<ASTField> AST::parseField() {
         return parseBitfield();
     }
 
+    if (token.type == IDENTIFIER && token.value == "branch") {
+        return parseBranch();
+    }
+
     if (token.type == IDENTIFIER && token.value == "define") {
         return parseDefine();
     }
@@ -198,7 +209,7 @@ std::shared_ptr<ASTField> AST::parseField() {
     if (token.type == IDENTIFIER) { // Assume primitive for now
         return parsePrimitive();
     }
-    return std::make_shared<ASTField>(ASTField{});
+    return std::make_shared<ASTField>();
 }
 
 std::shared_ptr<ASTPacket> AST::parsePacket() {
@@ -523,4 +534,49 @@ std::shared_ptr<ASTUnion> AST::parseUnion() {
         }
     }
     return std::make_shared<ASTUnion>(unionfield);
+}
+
+std::shared_ptr<ASTBranch> AST::parseBranch() {
+    eatToken(IDENTIFIER); // Eat branch Token
+    ASTBranch branch;
+    ASTPrimitiveValue parseAs;
+    if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type != OPEN_BRACKET) { // If branch type explicitly defined
+        parseAs.datatype = eatToken(IDENTIFIER).value;
+    } else {
+        parseAs.datatype = "uint8";
+    }
+    parseAs.sizeInBits = primitiveBitSizes[parseAs.datatype];
+    parseAs.type = NodeType::PRIMITIVE;
+    branch.type = NodeType::BRANCH;
+    branch.parseAs = parseAs;
+    eatToken(OPEN_BRACKET);
+    blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
+    while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
+        std::string destination = eatToken(IDENTIFIER).value; // Destination
+        std::string ifOrDefaultsKeyword = eatToken(IDENTIFIER).value;
+        if (ifOrDefaultsKeyword == "defaults") {
+            branch.destinationDefault = destination;
+            eatOptionalToken({SEMI_COLON, NEW_LINE});
+            continue;
+        } else if (ifOrDefaultsKeyword != "if") {
+            ErrorHandler::throwError("Expected 'if' after destination in branch.", tokens, masterIndex);
+        }
+
+        std::shared_ptr<ASTCondition> condition = std::make_shared<ASTCondition>();
+        if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CONDITION_OPERATOR) {
+            Token conditionalOperator = eatToken(CONDITION_OPERATOR);
+            if (conditionalOperator.value == "==") condition->conditionOperator = ConditionOperators::EQUAL; else
+            if (conditionalOperator.value == "!=") condition->conditionOperator = ConditionOperators::NOT_EQUAL; else
+            if (conditionalOperator.value == ">") condition->conditionOperator = ConditionOperators::GREATER_THAN; else
+            if (conditionalOperator.value == "<") condition->conditionOperator = ConditionOperators::LESS_THAN; else
+            if (conditionalOperator.value == ">=") condition->conditionOperator = ConditionOperators::GREATER_EQUAL_THAN; else
+            if (conditionalOperator.value == "<=") condition->conditionOperator = ConditionOperators::LESS_EQUAL_THAN;
+        } else {
+            condition->conditionOperator = ConditionOperators::EQUAL;
+        }
+        condition->parsedCheckValue = convertTokenValue(eatToken({BOOL_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL}));
+        branch.destinationsAndConditions.push_back(std::make_pair(destination, condition));
+        eatOptionalToken({SEMI_COLON, NEW_LINE});
+    }
+    return std::make_shared<ASTBranch>(branch);
 }

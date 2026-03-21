@@ -50,7 +50,7 @@ void DecodedPacket::toJson(std::stringstream& ss, const std::shared_ptr<Interpre
             toJson(subSs, subField, indent + 1);
             subJsons.push_back(subSs.str());
         }
-        for (size_t i = 0; i < subJsons.size(); ++i) {
+        for (size_t i = 0; i < subJsons.size(); i++) {
             std::string s = subJsons[i];
             if (!s.empty() && s.back() == '\n') s.pop_back();
             ss << s;
@@ -75,7 +75,7 @@ void DecodedPacket::toJson(std::stringstream& ss, const std::shared_ptr<Interpre
             toJson(subSs, subfield, indent + 1);
             subJsons.push_back(subSs.str());
         }
-        for (size_t i = 0; i < subJsons.size(); ++i) {
+        for (size_t i = 0; i < subJsons.size(); i++) {
             std::string s = subJsons[i];
             if (!s.empty() && s.back() == '\n') s.pop_back();
             ss << s;
@@ -92,7 +92,7 @@ void DecodedPacket::toJson(std::stringstream& ss, const std::shared_ptr<Interpre
             toJson(subSs, subfield, indent + 1);
             subJsons.push_back(subSs.str());
         }
-        for (size_t i = 0; i < subJsons.size(); ++i) {
+        for (size_t i = 0; i < subJsons.size(); i++) {
             std::string s = subJsons[i];
             if (!s.empty() && s.back() == '\n') s.pop_back();
             ss << s;

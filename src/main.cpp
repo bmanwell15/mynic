@@ -10,17 +10,17 @@
 #define PACKET_NAME "BasicPacket"
 
 int main(int argc, char* argv[]) {
-    // if (argc < 2) {
-    //     std::cout << "mynic <filename>" << std::endl;
-    //     return 1;
-    // }
+    if (argc < 2) {
+        std::cout << "mynic <filename>" << std::endl;
+        return 1;
+    }
 
     std::string possibleFileName = argv[1];
 
-    // if (possibleFileName == "--version" || possibleFileName == "-v") {
-    //     std::cout << "Version " << VERSION << std::endl;
-    //     return 0;
-    // }
+    if (possibleFileName == "--version" || possibleFileName == "-v") {
+        std::cout << "Version " << VERSION << std::endl;
+        return 0;
+    }
 
     // if (possibleFileName == "--help" || possibleFileName == "-h") {
     //     std::cout << "Help Screen" << std::endl;

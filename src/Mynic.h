@@ -24,7 +24,7 @@ class Mynic {
         void printSchema();
         void printPacket(const std::string& packetName);
 
-        DecodedPacket decodePacket(const std::string& strBytes, const std::string& packetName);
+        DecodedPacket decodePacket(const std::string& strBytes, const std::string& packetName, bool asBits=false);
         DecodedPacket decodePacket(const std::vector<uint8_t>& dataBytes, const std::string& packetName);
 
     private:
@@ -34,7 +34,7 @@ class Mynic {
 
         std::string collectFileCode(const std::string& FILENAME);
         void printPacketField(std::shared_ptr<ASTField> field, blockDepth_t indent);
-
+        std::vector<uint8_t> bitsToBytes(const std::string& bitStr);
 };
 
 #endif // MYNIC_H

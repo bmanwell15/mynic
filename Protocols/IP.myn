@@ -1,0 +1,58 @@
+enum uint6 IP_TOS_PRECEDENCE {
+    ROUTINE
+    PRIORITY
+    IMMEDIATE
+    FLASH
+    FLASH_OVERRIDE
+    CRITICAL
+    INTERNETWORK_CONTROL
+    NETWORK_CONTROL
+}
+
+enum uint8 IP_ENCAPSULATED_PROTOCOL { // Enum incomplete
+    ICMP = 1,
+    TCP = 6,
+    UDP = 17
+}
+
+segment IP_HEADER {
+    bitfield versionAndHeaderLength {
+        uint version : 4;
+        uint headerLength : 4 //{expr: baseUint * 32}
+    }
+
+    bitfield typesOfService {
+        IP_TOS_PRECEDENCE differentiatedServiceCodePoint : 6;
+        bits explicitCongestionNotation : 2;
+    }
+
+    uint16 packetLength; // minimum is 20
+    uint16 identificationNumber;
+
+    bitfield flagsAndFragmentOffset {
+        // Flags
+        bool reserved : 1 {hidden: true};
+        bool dontFragment : 1;
+        bool moreFragments : 1;
+
+        // Fragments
+        uint fragmentOffset : 13; // Actual value needs to be multiplied by 8
+    }
+
+    union timeToLeave {
+        uint8 numerated;
+        byte raw;
+    }
+
+    IP_ENCAPSULATED_PROTOCOL protocol;
+    bytes2 checksum;
+    uint8 sourceAddress[4]; // change to IP Address type
+    uint8 destinationAddress[4];
+    // bytes options[headerLength - lengthOfRestOfHeader];
+}
+
+packet BasicPacket {
+    IP_HEADER header;
+    byte payload;
+    // bytes payload[TO_END];
+}

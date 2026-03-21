@@ -93,7 +93,10 @@ void Mynic::printSchema() {
 }
 
 
-DecodedPacket Mynic::decodePacket(const std::string& strBytes, const std::string& packetName) {
+DecodedPacket Mynic::decodePacket(const std::string& strBytes, const std::string& packetName, bool asBits) {
+    if (asBits)
+        return decodePacket(bitsToBytes(strBytes), packetName);
+    
     std::vector<uint8_t> bytes;
     for (size_t i = 0; i < strBytes.length(); i += 2) {
         std::string hexByte = strBytes.substr(i, 2);
@@ -106,4 +109,22 @@ DecodedPacket Mynic::decodePacket(const std::string& strBytes, const std::string
 DecodedPacket Mynic::decodePacket(const std::vector<uint8_t>& dataBytes, const std::string& packetName) {
     DecodedPacket decoded = interpreter.interpretBytes(dataBytes, packetName, rootNode);
     return decoded;
+}
+
+std::vector<uint8_t> Mynic::bitsToBytes(const std::string& bitStr) {
+    std::vector<uint8_t> asBytes;
+    std::string formattedBitStr;
+
+    if (bitStr.size() % 8 != 0)
+        formattedBitStr = std::string(bitStr.size() % 8, '0') + bitStr;
+
+    for (size_t i = 0; i < bitStr.size(); i++) {
+        if (i % 8 == 0) asBytes.push_back(0);
+        if (bitStr[i] == '1') {
+            asBytes[asBytes.size() - 1] += (uint8_t)(pow(2, 7 - (i % 8)));
+        } else if (bitStr[i] != '0') {
+            throw std::runtime_error("String of bytes caught unrecognisable character '" + std::to_string(bitStr[i]) + "'.");
+        }
+    }
+    return asBytes;
 }

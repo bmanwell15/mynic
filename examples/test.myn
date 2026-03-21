@@ -36,6 +36,18 @@ packet SubPacket {
 //     uint8 arrLength;
 // }
 
+segment SEGMENT1 {
+    uint8 segment1AsTrueInt;
+}
+
+packet PACKET1 {
+    byte packet1AsFalseByte;
+}
+
+segment SEGMENT_DEFAULT {
+    byte asDefault;
+}
+
 packet BasicPacket {
     // default {
     //     units: "px"
@@ -91,8 +103,20 @@ packet BasicPacket {
     // SplitPacket p;
     // byte payload[arrLength];
     // byte fromVar[ARR_SIZE];
+    // byte b1;
 
+    // branch {
+    //     SEGMENT1 if 0x01;
+    //     PACKET1 if 0x02;
+    //     SEGMENT_DEFAULT defaults;
+    // }
 
+    // ipv4Address myIp;
+    // ipAddress32 anotherIp;
+    // ipv6Address myIp6;
 
+    // bytes chunkOBytes[3];
+    // bits chunkOBits[8];
+    byte bb;
 };
 

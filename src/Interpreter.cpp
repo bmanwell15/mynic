@@ -272,7 +272,7 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
 
     if (datatype.starts_with("bits")) { // && != "bits" is assumed -> Arbitrary bitsX
         auto bitStr = std::bitset<64>(bits).to_string();
-        auto pos = field.sizeInBits;
+        auto pos = field.sizeInBits == 0 ? 1 : field.sizeInBits;
         return Value{pos == std::string::npos ? "0b0" : "0b" + bitStr.substr(bitStr.size() - pos)};
     }
 
@@ -282,7 +282,7 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
 
     if (datatype.starts_with("bytes")) {
         std::stringstream ss;
-        int bytesNum = std::stoi(datatype.substr(5));
+        int bytesNum = datatype.size() > 5 ? std::stoi(datatype.substr(5), nullptr, 16) : 1;
         ss << "0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(bytesNum * 2) << bits;
         return Value{ss.str()};
     }
@@ -361,6 +361,27 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
         }
 
         return formatDuration(rawTime * NS_PER_SECOND);
+    }
+
+    if (datatype == "ipv4Address" || datatype == "ipAddress32") {
+        uint8_t addressParts[4];
+        addressParts[3] = bits & 0xFF;
+        addressParts[2] = (bits >> 8) & 0xFF;
+        addressParts[1] = (bits >> 16) & 0xFF;
+        addressParts[0] = (bits >> 24) & 0xFF;
+        std::string asString = std::to_string(addressParts[0]) + "." + std::to_string(addressParts[1]) + "." + std::to_string(addressParts[2]) + "." + std::to_string( addressParts[3]);
+        return asString;
+    }
+
+    if (datatype == "ipv6Address" || datatype == "ipAddress128") {
+        std::stringstream ss;
+        const uint8_t bytesNum = 16;
+        ss << std::hex << std::uppercase << std::setfill('0') << std::setw(bytesNum) << bits << bitQueue.pop(64);
+        std::string asString = ss.str();
+        for (int i = 4; i < asString.size(); i += 5) {
+            asString.insert(i, ":");
+        }
+        return Value{asString};
     }
 
     throw std::runtime_error("Unsupported datatype: " + datatype);
@@ -445,17 +466,43 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
                 arrayDef->length = static_cast<size_t>(std::get<int64_t>(parsedVal.value()));
             } else if (std::holds_alternative<unsigned long>(parsedVal.value())) {
                 arrayDef->length = std::get<unsigned long>(parsedVal.value());
-            } else if (std::holds_alternative<signed long>(parsedVal.value())) {
-                arrayDef->length = static_cast<size_t>(std::get<signed long>(parsedVal.value()));
+            } else if (std::holds_alternative<long>(parsedVal.value())) {
+                arrayDef->length = static_cast<size_t>(std::get<long>(parsedVal.value()));
             } else {
                 throw std::runtime_error("Dynamic array length must be a numeric value, not " + std::string(parsedVal.value().index() ? "complex" : "string"));
             }
         }
 
         for (size_t i = 0; i < arrayDef->length; i++) {
-            interpretedArray.list.push_back(interpretField(arrayDef->elementSchema, bitQueue, rootNode));
+            if ((arrayDef->elementSchema->datatype == "bytes" || arrayDef->elementSchema->datatype == "bits") && interpretedArray.list.size()) {
+                auto a = std::static_pointer_cast<InterpretedPrimitiveValue>(interpretField(arrayDef->elementSchema, bitQueue, rootNode));
+                auto originalValue = std::static_pointer_cast<InterpretedPrimitiveValue>(interpretedArray.list[0]);
+                originalValue->value = std::get<std::string>(originalValue->value) + std::get<std::string>(a->value).substr(2); // .substr(2) to remove 0x prefix
+            } else {
+                interpretedArray.list.push_back(interpretField(arrayDef->elementSchema, bitQueue, rootNode));
+            }
         }
         return std::make_shared<InterpretedArray>(interpretedArray);
+    } else if (field->type == NodeType::BRANCH) {
+        auto branchDef = std::static_pointer_cast<ASTBranch>(field);
+        Value parsedPrimitiveVal = interpretValue(branchDef->parseAs, bitQueue);
+        bitQueue.rewind(branchDef->parseAs.sizeInBits);
+        for (const auto& nameConditionPair : branchDef->destinationsAndConditions) {
+            if (
+                nameConditionPair.second->conditionOperator == ConditionOperators::EQUAL && parsedPrimitiveVal == nameConditionPair.second->parsedCheckValue ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::NOT_EQUAL && parsedPrimitiveVal != nameConditionPair.second->parsedCheckValue ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_THAN && parsedPrimitiveVal < nameConditionPair.second->parsedCheckValue ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_EQUAL_THAN && parsedPrimitiveVal <= nameConditionPair.second->parsedCheckValue ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_THAN && parsedPrimitiveVal > nameConditionPair.second->parsedCheckValue ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_EQUAL_THAN && parsedPrimitiveVal >= nameConditionPair.second->parsedCheckValue
+            ) {
+                return interpretPacket(*(std::static_pointer_cast<ASTPacket>(astTree->properties[nameConditionPair.first])), bitQueue, rootNode);
+            }
+        }
+
+        if (branchDef->destinationDefault != "") {
+            return interpretPacket(*(std::static_pointer_cast<ASTPacket>(astTree->properties[branchDef->destinationDefault])), bitQueue, rootNode);
+        }
     }
 
     return std::make_shared<InterpretedField>();

@@ -1,0 +1,33 @@
+segment TCP_HEADER {
+    uint16 sourcePort; // bytes 0-1
+    uint16 destinationPort; // bytes 2-3
+    uint32 sequenceNumber; // bytes 4-7
+    uint64 acknowledgementNumber; // bytes 8-12
+    bitfield flags { // bytes 12-13
+        uint dataOffset : 4;
+        bits reserved : 4 {hidden: true};
+        bool CWR : 1;
+        bool ECE : 1;
+        bool URG : 1;
+        bool ACK : 1;
+        bool PSH : 1;
+        bool RST : 1;
+        bool SYN : 1;
+        bool FIN : 1;
+    }
+    uint16 window {units: "Window Size Units"}; // bytes 14-15
+    bytes2 checksum; // bytes 16-17
+    bytes2 urgentPointer; // bytes 18-19
+    bytes4 options[dataOffset]; // Actual is (dataOffset - 5) (*4 if one byte, but bytes4 accounts for that)
+
+    // bytes4 options[dataOffset - 5];
+    // bytes4 options[SUBTRACT(dataOffset, 5)];
+
+    // Payload data preceeds
+}
+
+packet BasicPacket {
+    TCP_HEADER header;
+    byte payload;
+    // bytes payload[TO_END]; // Actual implementation of TCP_PACKET
+}
