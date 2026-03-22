@@ -86,7 +86,30 @@ TODO:
         while (currentByte != 0x00) { ... }
     }
 
-- Checksum (datatype?) -> Evaluates the checksum of the packet and returns true/false in another field acordingly. MUST include all major checksum formats
+- if, if-else, else statements:
+{
+    uint8 packetType;
+    if (packetType == 1) {
+
+    } else if (packetType == 2) {
+
+    } else {
+        
+    }
+}
+
+- Switch statements
+{
+    uint8 packetType;
+    switch (packetType) {
+        case 0 {
+            uint32 d;
+        };
+        case 1 {
+            float d;
+        }
+    }
+}
 
 - Mathematical expressions in values:
     {
@@ -159,3 +182,5 @@ TODO:
     Telecom / Cellular Networks: SS7, Diameter, GTP (GPRS Tunneling Protocol), SCTP
 
     Game Networking Protocols: RakNet, ENet, Steam Networking Protocol
+
+    QR Code Protocols
