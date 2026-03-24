@@ -64,14 +64,16 @@ Loading Mynic File
 - Add IP Address datatype (ipv4Address, ipv6Address, ipAddress32, ipAddress128)
 - Make bytes oneChunkOfBytes[3]; -> bits chunkOBits[8];
 - Allow a string of bits to be inputted into the parse function if parameter asBits=true;
+- Recersively get and print segment and packet sizes (for printing in Mynic.cpp)
 
 TODO:
 -------------------------------
 - TO_END keyword, which is used in arrays, loops, etc
 {
-    bytes[TO_END]; // Collects all of the bytes to the end of the packet -> Note that because there is not a number after "bytes", the array is assumed to be one large chunk of bytes (Same would go for bits[TO_END])
+    bytes by[TO_END]; // Collects all of the bytes to the end of the packet
+    bits bi[TO_END];
+    uint8 ui[TO_END]; // An array of uint8
 }
-- Recersively get and print segment and packet sizes (for printing in Mynic.cpp)
 - Repeat fields:
     {
         repeat (10) {
@@ -138,6 +140,18 @@ TODO:
     }
 - API call which counts and runs which bit position corresponds to which field (example, uint16 field2; is byte 3 & 4). Note that this may be impossible due to dynamic sizes.
 - Throw warnings during interpretation
+- STD Vars and Functions:
+    Vars:
+        TO_END
+        RAW_PACKET_LENGTH (in bytes)
+        BIT_POSITION
+        BYTE_POSITION
+    Function:
+        MAX(int x, int x2, ...)
+        MIN(int x, int x2, ...)
+        POW/SQRT/EXP/LOG, etc....
+        REWIND(uint numOfBits)
+        SKIP(uint numOfBits)
 
 - STD Mynic files for popular protocols
     Core Internet: TCP, UDP, IP, ICMP, ARP

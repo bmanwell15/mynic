@@ -432,19 +432,12 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         InterpretedUnionfield interpretedUnionfield;
         interpretedUnionfield.name = unionfieldDef->name;
         interpretedUnionfield.type = NodeType::UNION;
-        size_t unionSize = 0;
         for (const auto& subfieldPtr : unionfieldDef->subfields) {
             auto interpretedSubfield = interpretField(subfieldPtr, bitQueue, rootNode);
             interpretedUnionfield.subfields.push_back(interpretedSubfield);
-            if (interpretedSubfield->type == NodeType::PRIMITIVE) {
-                auto subfieldPrim = std::static_pointer_cast<InterpretedPrimitiveValue>(interpretedSubfield);
-                if (unionSize == 0) unionSize = subfieldPrim->sizeInBytes * 8;
-                bitQueue.rewind(unionSize); // Rewind to interpret again
-            } else {
-                throw std::runtime_error("Only primitives can be inside of a union field.");
-            }
+            bitQueue.rewind(unionfieldDef->sizeInBits); // Rewind to interpret again
         }
-        bitQueue.pop(unionSize); // Move past union
+        bitQueue.pop(unionfieldDef->sizeInBits); // Move past union
         return std::make_shared<InterpretedUnionfield>(interpretedUnionfield);
     } else if (field->type == NodeType::SEGMENT || field->type == NodeType::PACKET) {
         auto segment = std::static_pointer_cast<ASTPacket>(field);

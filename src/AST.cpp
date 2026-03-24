@@ -137,6 +137,41 @@ bool AST::isKnownType(const std::string& type) {
     return primitiveBitSizes.count(type) || isDynamicSizeType(type) || rootNode->properties[type];
 }
 
+size_t AST::getStructureSize(std::shared_ptr<ASTField> field) {
+    if (field->type == NodeType::PRIMITIVE) {
+        auto asPrim = std::static_pointer_cast<ASTPrimitiveValue>(field);
+        return asPrim->sizeInBits;
+    }
+    if (field->type == NodeType::PACKET || field->type == NodeType::SEGMENT) {
+        auto packetField = std::static_pointer_cast<ASTPacket>(field);
+        size_t packetSize = 0;
+        for (const auto& subField : packetField->fields) {
+            packetSize += getStructureSize(subField);
+        }
+        packetField->sizeInBits = packetSize;
+        return packetSize;
+    }
+    if (field->type == NodeType::BITFIELD) {
+        auto bitfield = std::static_pointer_cast<ASTBitfield>(field);
+        size_t bitfieldSize = 0;
+        for (const auto& subfield : bitfield->subfields) {
+            bitfieldSize += getStructureSize(subfield);
+        }
+        bitfield->sizeInBits = bitfieldSize;
+        return bitfieldSize;
+    }
+    if (field->type == NodeType::UNION) {
+        auto unionField = std::static_pointer_cast<ASTUnion>(field);
+        return unionField->sizeInBits; // Field is already set when validating that all union subfields have the same size
+    }
+    if (field->type == NodeType::ARRAY) {
+        auto arrayField = std::static_pointer_cast<ASTArray>(field);
+        arrayField->sizeInBits = arrayField->length * getStructureSize(arrayField->elementSchema);
+        return arrayField->sizeInBits;
+    }
+    return 0;
+}
+
 size_t AST::parseVariableCall() {
     Token possibleVar = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
     if (possibleVar.type == INT_LITERAL) return std::stoul(eatToken(INT_LITERAL).value);
@@ -146,7 +181,6 @@ size_t AST::parseVariableCall() {
         eatToken(IDENTIFIER);
         return std::get<uint64_t>(definedVariables[possibleVar.value]);
     }
-
     return 0;
 }
 
@@ -213,13 +247,13 @@ std::shared_ptr<ASTField> AST::parseField() {
 }
 
 std::shared_ptr<ASTPacket> AST::parsePacket() {
-    ASTPacket packetNode;
-    packetNode.type = NodeType::PACKET;
-    packetNode.defaultSettings = nullptr;
-    currentPacket = &packetNode;
+    auto packetNode = std::make_shared<ASTPacket>();
+    packetNode->type = NodeType::PACKET;
+    packetNode->defaultSettings = nullptr;
+    currentPacket = &(*packetNode);
 
     eatToken(IDENTIFIER); // Consume 'packet' token
-    packetNode.name = eatToken(IDENTIFIER).value;
+    packetNode->name = eatToken(IDENTIFIER).value;
 
     eatToken(OPEN_BRACKET);
     blockDepth_t packetDepth = tokens[masterIndex].blockDepth;
@@ -228,16 +262,19 @@ std::shared_ptr<ASTPacket> AST::parsePacket() {
         std::shared_ptr<ASTField> field = parseField();
 
         if (field->type == NodeType::DEFAULT_BLOCK) {
-            packetNode.defaultSettings = std::static_pointer_cast<ASTDefault>(field)->settings;
+            packetNode->defaultSettings = std::static_pointer_cast<ASTDefault>(field)->settings;
         } else {
-            packetNode.fields.push_back(field);
+            packetNode->fields.push_back(field);
         }
         masterIndex++;
     }
     eatToken(CLOSE_BRACKET);
     currentPacket = nullptr;
+    packetNode->sizeInBits = getStructureSize(packetNode);
+    primitiveBitSizes[packetNode->name] = packetNode->sizeInBits;
+    std::cout << "DDD " << packetNode->sizeInBits << std::endl;
 
-    return std::make_shared<ASTPacket>(packetNode);
+    return packetNode;
 }
 
 std::shared_ptr<ASTField> AST::parseTypeDef() {
@@ -520,19 +557,24 @@ std::shared_ptr<ASTUnion> AST::parseUnion() {
     eatToken(OPEN_BRACKET);
     blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
     while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
-        std::shared_ptr<ASTField> var = parsePrimitive();
-        unionfield.subfields.push_back(var);
-        if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CLOSE_BRACKET) break;
-        eatOptionalToken({SEMI_COLON, NEW_LINE});
+        std::shared_ptr<ASTField> var = parseField();
+        if (var->type != NodeType::ROOT_NODE)
+            unionfield.subfields.push_back(var);
+        // if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CLOSE_BRACKET) break;
+        eatOptionalToken({SEMI_COLON, NEW_LINE, CLOSE_BRACKET});
     }
 
-    size_t bitSizeOfField = std::static_pointer_cast<ASTPrimitiveValue>(unionfield.subfields[0])->sizeInBits;
+    if (unionfield.subfields.size() == 0)
+        ErrorHandler::throwError("Union '" + unionfield.name + "' must have at least one subvalue.", tokens, masterIndex);
+
+    size_t bitSizeOfField = getStructureSize(unionfield.subfields[0]);
     for (const auto& subfield : unionfield.subfields) { // Collect bit size to check if they are consistant
-        if (subfield->type == NodeType::PRIMITIVE) {
-            if (bitSizeOfField != std::static_pointer_cast<ASTPrimitiveValue>(subfield)->sizeInBits)
-                ErrorHandler::throwError("Union '" + unionfield.name + "' must have values of the same bit size.", tokens, masterIndex);
+        std::cout << getStructureSize(subfield) << " | " << (int)(subfield->type) << " | " << unionfield.subfields.size() << std::endl;
+        if (subfield->type == NodeType::PRIMITIVE && bitSizeOfField != getStructureSize(subfield)) {
+            ErrorHandler::throwError("Union '" + unionfield.name + "' must have values of the same bit size.", tokens, masterIndex);
         }
     }
+    unionfield.sizeInBits = bitSizeOfField;
     return std::make_shared<ASTUnion>(unionfield);
 }
 

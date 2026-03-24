@@ -83,11 +83,13 @@ struct ASTEnum : public ASTField {
 
 struct ASTBitfield : public ASTField {
     std::string name;
+    size_t sizeInBits;
     std::vector<std::shared_ptr<ASTField>> subfields;
 };
 
 struct ASTUnion : public ASTField {
     std::string name;
+    size_t sizeInBits;
     std::vector<std::shared_ptr<ASTField>> subfields;
 };
 
@@ -107,13 +109,15 @@ struct ASTDefault : public ASTField {
 };
 
 struct ASTArray : public ASTField {
-    size_t length;
+    size_t length = 0;
+    size_t sizeInBits = 0;
     std::string dynamicLength;
     std::shared_ptr<ASTPrimitiveValue> elementSchema;
 };
 
 struct ASTPacket : public ASTField {
     std::string name;
+    size_t sizeInBits = 0;
     std::vector<std::shared_ptr<ASTField>> fields;
     std::shared_ptr<ASTPrimitiveValueSettings> defaultSettings;
 };
@@ -127,9 +131,11 @@ class AST {
     public:
         explicit AST(Mynic* myn);
         Interpreter* interpreter;
-        std::shared_ptr<ASTNode> parseTokensToAST(const std::vector<Token>& inputTokens, bool isMainFile=true);
         std::unordered_map<std::string, size_t> primitiveBitSizes;
         std::unordered_map<std::string, Value> definedVariables; // <varName, varValue> Stored in AST because AST will replace variables with Values during compilation
+
+        std::shared_ptr<ASTNode> parseTokensToAST(const std::vector<Token>& inputTokens, bool isMainFile=true);
+        size_t getStructureSize(std::shared_ptr<ASTField> field);
 
     private:
         size_t masterIndex;

@@ -1,0 +1,26 @@
+
+
+segment SEG {
+    uint8 prim1;
+    byte prim2;
+}
+
+packet BasicPacket {
+    uint8 prim;
+    bitfield doubleByte {
+        uint oneNum : 7;
+        bool aFlag : 1;
+        uint twoNum : 7;
+        bool moreFlag : 1;
+    }
+
+    union bigU {
+        uint8 myUint;
+        bitfield asBits {
+            uint num : 7;
+            bool bf : 1;
+        }
+    }
+
+    SEG segSize;
+}
