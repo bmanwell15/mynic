@@ -74,6 +74,24 @@ TODO:
     bits bi[TO_END];
     uint8 ui[TO_END]; // An array of uint8
 }
+- Change InterpretedField.sizeInBytes to InterpretedField.sizeInBits
+- lamda segments as primitive value
+{
+    uint8 num;
+    segment GroupOfStuff {
+        uint8 groupNum;
+        byte lastByte;
+    }
+
+    branch uint8 {
+        segment { // Do we need a segment name?
+            uint8 thisNum;
+        } if 0x00;
+        segment {
+            byte thatNum;
+        } if <= 0xA0;
+    }
+}
 - Repeat fields:
     {
         repeat (10) {
@@ -84,34 +102,9 @@ TODO:
         uint counter
         repeat (counter) { ... }
         
-        while (!EOF) { ... }
+        while (!END_OF_STREAM) { ... }
         while (currentByte != 0x00) { ... }
     }
-
-- if, if-else, else statements:
-{
-    uint8 packetType;
-    if (packetType == 1) {
-
-    } else if (packetType == 2) {
-
-    } else {
-        
-    }
-}
-
-- Switch statements
-{
-    uint8 packetType;
-    switch (packetType) {
-        case 0 {
-            uint32 d;
-        };
-        case 1 {
-            float d;
-        }
-    }
-}
 
 - Mathematical expressions in values:
     {
@@ -132,6 +125,8 @@ TODO:
                 includeTimestamp: true,
                 includeRawBytes: true,
                 includePacketName: true,
+
+                // May not include file handling in API, might leave that to the end user
                 saveToFile: false,
                 destinationFolder: "./folder/path" // irrelevant if saveToFile == false;
             }
@@ -146,12 +141,19 @@ TODO:
         RAW_PACKET_LENGTH (in bytes)
         BIT_POSITION
         BYTE_POSITION
+        END_OF_STREAM -> Boolean
     Function:
         MAX(int x, int x2, ...)
         MIN(int x, int x2, ...)
         POW/SQRT/EXP/LOG, etc....
         REWIND(uint numOfBits)
         SKIP(uint numOfBits)
+- String Support (Look for string length OR null terminator)
+{
+    string variableLengthStr; // Looks for null termination code (0x00)
+    string fixedLengthStr[10]; // Will gather 10 bytes of chars
+    char oneChar;
+}
 
 - STD Mynic files for popular protocols
     Core Internet: TCP, UDP, IP, ICMP, ARP

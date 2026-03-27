@@ -41,7 +41,7 @@ struct InterpretedUnionfield : public InterpretedField {
 struct InterpretedArray : public InterpretedField {
     std::vector<std::shared_ptr<InterpretedField>> list;
 };
-                    
+
 
 class DecodedPacket {
     public:
