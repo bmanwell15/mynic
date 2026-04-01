@@ -6,6 +6,7 @@ AST::AST(Mynic* myn) {
     masterIndex = 0;
     tokens = {};
     rootNode = std::make_shared<ASTNode>(ASTNode{NodeType::ROOT_NODE, {}});
+    toEndFlagUsed = false;
     primitiveBitSizes = {
         {"bit", 1},
         {"bits", 1},
@@ -192,6 +193,10 @@ std::shared_ptr<ASTField> AST::parseField() {
         while (masterIndex < tokens.size() && tokens[masterIndex].type != MULTI_LINED_COMMENT) {masterIndex++;}
         return std::make_shared<ASTField>(ASTField{});
     }
+
+    if (token.type == IDENTIFIER && MYNIC_KEYWORDS.contains(token.value)) {
+
+    }
     
     if (token.type == IDENTIFIER && token.value == "packet") {
         std::shared_ptr<ASTPacket> packet = parsePacket();
@@ -272,8 +277,6 @@ std::shared_ptr<ASTPacket> AST::parsePacket() {
     currentPacket = nullptr;
     packetNode->sizeInBits = getStructureSize(packetNode);
     primitiveBitSizes[packetNode->name] = packetNode->sizeInBits;
-    std::cout << "DDD " << packetNode->sizeInBits << std::endl;
-
     return packetNode;
 }
 
@@ -308,6 +311,7 @@ std::shared_ptr<ASTField> AST::parseTypeDef() {
 }
 
 std::shared_ptr<ASTField> AST::parsePrimitive() {
+    if (toEndFlagUsed) ErrorHandler::throwError("Another field cannot be used after 'TO_END' value is called.", tokens, masterIndex);
     auto field = std::make_shared<ASTPrimitiveValue>();
     field->datatype = eatToken(IDENTIFIER).value;
 
@@ -338,6 +342,7 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
         size_t arrLength = parseVariableCall();
         if (arrLength == 0) {
             arr->dynamicLength = eatToken(IDENTIFIER).value;
+            if (arr->dynamicLength == "TO_END") toEndFlagUsed = true;
             if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == PERIOD) { // if variable takes the form (enum.attribute)
                 arr->dynamicLength += eatToken(PERIOD).value;
                 arr->dynamicLength += eatToken(IDENTIFIER).value;
@@ -569,7 +574,6 @@ std::shared_ptr<ASTUnion> AST::parseUnion() {
 
     size_t bitSizeOfField = getStructureSize(unionfield.subfields[0]);
     for (const auto& subfield : unionfield.subfields) { // Collect bit size to check if they are consistant
-        std::cout << getStructureSize(subfield) << " | " << (int)(subfield->type) << " | " << unionfield.subfields.size() << std::endl;
         if (subfield->type == NodeType::PRIMITIVE && bitSizeOfField != getStructureSize(subfield)) {
             ErrorHandler::throwError("Union '" + unionfield.name + "' must have values of the same bit size.", tokens, masterIndex);
         }

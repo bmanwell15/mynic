@@ -14,7 +14,7 @@
 
 struct InterpretedField {
     std::string name;
-    size_t sizeInBytes;
+    size_t sizeInBits;
     NodeType type;
 };
 

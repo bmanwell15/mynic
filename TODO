@@ -65,16 +65,15 @@ Loading Mynic File
 - Make bytes oneChunkOfBytes[3]; -> bits chunkOBits[8];
 - Allow a string of bits to be inputted into the parse function if parameter asBits=true;
 - Recersively get and print segment and packet sizes (for printing in Mynic.cpp)
-
-TODO:
--------------------------------
 - TO_END keyword, which is used in arrays, loops, etc
 {
     bytes by[TO_END]; // Collects all of the bytes to the end of the packet
     bits bi[TO_END];
     uint8 ui[TO_END]; // An array of uint8
 }
-- Change InterpretedField.sizeInBytes to InterpretedField.sizeInBits
+
+TODO:
+-------------------------------
 - lamda segments as primitive value
 {
     uint8 num;
@@ -138,7 +137,8 @@ TODO:
 - STD Vars and Functions:
     Vars:
         TO_END
-        RAW_PACKET_LENGTH (in bytes)
+        PACKET_BYTE_LENGTH
+        PACKET_BIT_LENGTH
         BIT_POSITION
         BYTE_POSITION
         END_OF_STREAM -> Boolean

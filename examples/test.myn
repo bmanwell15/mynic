@@ -36,14 +36,6 @@ packet SubPacket {
 //     uint8 arrLength;
 // }
 
-segment SEGMENT1 {
-    uint8 segment1AsTrueInt;
-}
-
-packet PACKET1 {
-    byte packet1AsFalseByte;
-}
-
 segment SEGMENT_DEFAULT {
     byte asDefault;
 }
@@ -117,6 +109,10 @@ packet BasicPacket {
 
     // bytes chunkOBytes[3];
     // bits chunkOBits[8];
-    byte bb;
+
+    // uint8 num1;
+    // bytes rest[TO_END];
+
+    byte num;
 };
 

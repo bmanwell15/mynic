@@ -8,7 +8,8 @@
 #include <algorithm>
 #include <cctype>
 #include <variant>
-#include <sstream> 
+#include <sstream>
+#include <unordered_set>
 
 #include "lexer.h"
 #include "ErrorHandler.h"
@@ -133,6 +134,7 @@ class AST {
         Interpreter* interpreter;
         std::unordered_map<std::string, size_t> primitiveBitSizes;
         std::unordered_map<std::string, Value> definedVariables; // <varName, varValue> Stored in AST because AST will replace variables with Values during compilation
+        inline static const std::unordered_set<std::string> MYNIC_KEYWORDS = {"TO_END"};
 
         std::shared_ptr<ASTNode> parseTokensToAST(const std::vector<Token>& inputTokens, bool isMainFile=true);
         size_t getStructureSize(std::shared_ptr<ASTField> field);
@@ -143,6 +145,7 @@ class AST {
         std::shared_ptr<ASTNode> rootNode;
         Mynic* mynic;
         ASTPacket* currentPacket;
+        bool toEndFlagUsed;
 
         bool isKnownType(const std::string& type);
 

@@ -181,8 +181,13 @@ std::shared_ptr<InterpretedField> Interpreter::findField(const std::shared_ptr<I
     return nullptr;
 }
 
-std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName) {
+std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName, BitQueue& bitQueue) {
     auto foundPeriodIndex = varName.find('.');
+
+    if (AST::MYNIC_KEYWORDS.contains(varName)) {
+        if (varName == "TO_END") return (uint64_t)(bitQueue.size() / 8);
+    }
+
     if (foundPeriodIndex != std::string::npos) { // Enum variable lookup
         std::string enumName = varName.substr(0, foundPeriodIndex); // Name of the variable that is assumed to have been previously parsed
         std::string attributeName = varName.substr(foundPeriodIndex + 1); // Attribute of that enum based on the parsed value
@@ -221,19 +226,19 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
     if (field->type == NodeType::PACKET || field->type == NodeType::SEGMENT) {
         auto packet = std::static_pointer_cast<InterpretedPacket>(field);
         for (const auto& subfield : packet->fields) {
-            auto result = getParsedValue(subfield, varName);
+            auto result = getParsedValue(subfield, varName, bitQueue);
             if (result.has_value()) return result;
         }
     } else if (field->type == NodeType::BITFIELD) {
         auto bitfield = std::static_pointer_cast<InterpretedBitfield>(field);
         for (const auto& subfield : bitfield->subfields) {
-            auto result = getParsedValue(subfield, varName);
+            auto result = getParsedValue(subfield, varName, bitQueue);
             if (result.has_value()) return result;
         }
     } else if (field->type == NodeType::UNION) {
         auto unionfield = std::static_pointer_cast<InterpretedUnionfield>(field);
         for (const auto& subfield : unionfield->subfields) {
-            auto result = getParsedValue(subfield, varName);
+            auto result = getParsedValue(subfield, varName, bitQueue);
             if (result.has_value()) return result;
         }
     }
@@ -412,7 +417,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
 
         InterpretedPrimitiveValue interpretedField;
         interpretedField.name = primField->name;
-        interpretedField.sizeInBytes = primField->sizeInBits / 8;
+        interpretedField.sizeInBits = primField->sizeInBits;
         interpretedField.type = NodeType::PRIMITIVE;
         interpretedField.settings = primField->settings;
         interpretedField.datatype = primField->datatype;
@@ -449,7 +454,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         interpretedArray.type = NodeType::ARRAY;
 
         if (arrayDef->dynamicLength != "") {
-            auto parsedVal = getParsedValue(rootNode, arrayDef->dynamicLength);
+            auto parsedVal = getParsedValue(rootNode, arrayDef->dynamicLength, bitQueue);
             if (!parsedVal.has_value())
                 throw std::runtime_error("Var not defined.");
             // Extract numeric value from Value variant

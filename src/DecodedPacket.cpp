@@ -18,17 +18,22 @@ void DecodedPacket::print() const {
     std::cout << toJson() << std::endl;
 }
 
-void printPrimitive(std::stringstream& ss, Value v) {
+void printPrimitive(std::stringstream& ss, std::shared_ptr<InterpretedPrimitiveValue> primField) {
     std::visit([&](auto&& value) {
         using T = std::decay_t<decltype(value)>;
 
         if constexpr (std::is_same_v<T, bool>) {
             ss << (value ? "true" : "false");
         } else if constexpr (std::is_same_v<T, std::string>) {
-            ss << '\"' << value << '\"';
+            if (primField->settings && primField->settings->units != "")
+                ss << value;
+            else
+                ss << '\"' << value << '\"';
         } else if constexpr (std::is_same_v<T, uint8_t>) { // byte
-            ss << "\"0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(value);
-            ss << std::dec << '\"';
+            if (primField->settings && primField->settings->units != "")
+                ss << "0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(value) << std::dec;
+            else
+                ss << "\"0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(value) << std::dec << '\"';
         } else if constexpr (std::is_same_v<T, int8_t>) {
             ss << static_cast<int>(value);
         } else if constexpr (std::is_arithmetic_v<T>) {
@@ -36,7 +41,7 @@ void printPrimitive(std::stringstream& ss, Value v) {
         } else {
             static_assert(!sizeof(T), "Unhandled variant type");
         }
-    }, v);
+    }, primField->value);
 }
 
 void DecodedPacket::toJson(std::stringstream& ss, const std::shared_ptr<InterpretedField>& field, int indent) const {
@@ -63,7 +68,7 @@ void DecodedPacket::toJson(std::stringstream& ss, const std::shared_ptr<Interpre
         if (primField->settings && primField->settings->isHidden) return;
         ss << indentStr << "\"" << primField->name << "\": ";
         if (primField->settings && primField->settings->units != "") ss << '\"';
-        printPrimitive(ss, primField->value);
+        printPrimitive(ss, primField);
         if (primField->settings && primField->settings->units != "") ss << ' ' << primField->settings->units << '\"';
         ss << "\n";
     } else if (field->type == NodeType::BITFIELD) {
@@ -107,7 +112,7 @@ void DecodedPacket::toJson(std::stringstream& ss, const std::shared_ptr<Interpre
             auto& listElement = arrayfield->list[i];
             if (listElement->type != NodeType::PRIMITIVE) {throw std::runtime_error("Element not primitive.");}
             auto asPrimitive = std::static_pointer_cast<InterpretedPrimitiveValue>(listElement);
-            printPrimitive(ss, asPrimitive->value);
+            printPrimitive(ss, asPrimitive);
             if (i != arrayfield->list.size() - 1) ss << ", ";
         }
         ss << " ]\n";
