@@ -20,9 +20,9 @@ define ARR_SIZE 0x0A
 
 typedef bool byte_t
 
-default {
-    units: "*"
-}
+//default {
+//    units: "*"
+//}
 
 segment BasicSegment {
     uint8 didLoad;
@@ -114,5 +114,13 @@ packet BasicPacket {
     // bytes rest[TO_END];
 
     byte num;
+    segment GLUTEN {
+        uint8 wow;
+        byte cool;
+    }
+    bitfield bit1 {
+        bits wow : 7;
+        bit wow2 : 1;
+    }
 };
 

@@ -71,9 +71,6 @@ Loading Mynic File
     bits bi[TO_END];
     uint8 ui[TO_END]; // An array of uint8
 }
-
-TODO:
--------------------------------
 - lamda segments as primitive value
 {
     uint8 num;
@@ -81,16 +78,10 @@ TODO:
         uint8 groupNum;
         byte lastByte;
     }
-
-    branch uint8 {
-        segment { // Do we need a segment name?
-            uint8 thisNum;
-        } if 0x00;
-        segment {
-            byte thatNum;
-        } if <= 0xA0;
-    }
 }
+
+TODO:
+-------------------------------
 - Repeat fields:
     {
         repeat (10) {

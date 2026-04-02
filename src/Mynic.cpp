@@ -66,6 +66,13 @@ void Mynic::printPacketField(std::shared_ptr<ASTField> field, blockDepth_t inden
         std::string bitSizeStr = arrayfield->dynamicLength == "" ? std::to_string(arrayfield->elementSchema->sizeInBits * arrayfield->length) : "?";
         std::string insideBracketStr = arrayfield->length == 0 ? arrayfield->dynamicLength : std::to_string(arrayfield->length);
         std::cout << indentStr << arrayfield->elementSchema->datatype << ' ' << arrayfield->elementSchema->name << "[" << insideBracketStr << "] (" << bitSizeStr << " bits);" << std::endl;
+    } else if (field->type == NodeType::SEGMENT) {
+        auto segDef = std::static_pointer_cast<ASTPacket>(field);
+        std::cout << indentStr << segDef->name << " {" << std::endl;
+        for (const auto& subfield : segDef->fields) {
+            printPacketField(subfield, indent + 1);
+        }
+        std::cout << indentStr << "}" << std::endl;
     }
 }
 

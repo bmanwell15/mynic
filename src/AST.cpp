@@ -191,7 +191,7 @@ std::shared_ptr<ASTField> AST::parseField() {
     if (token.type == MULTI_LINED_COMMENT) {
         masterIndex++;
         while (masterIndex < tokens.size() && tokens[masterIndex].type != MULTI_LINED_COMMENT) {masterIndex++;}
-        return std::make_shared<ASTField>(ASTField{});
+        return std::make_shared<ASTField>();
     }
 
     if (token.type == IDENTIFIER && MYNIC_KEYWORDS.contains(token.value)) {
@@ -205,9 +205,11 @@ std::shared_ptr<ASTField> AST::parseField() {
     }
 
     if (token.type == IDENTIFIER && token.value == "segment") {
+        bool isLambdaSegment = (currentPacket != nullptr);
         std::shared_ptr<ASTPacket> segment = parsePacket();
         segment->type = NodeType::SEGMENT;
-        rootNode->properties[segment->name] = segment;
+        if (!isLambdaSegment)
+            rootNode->properties[segment->name] = segment;
         return segment;
     }
 
@@ -255,9 +257,8 @@ std::shared_ptr<ASTPacket> AST::parsePacket() {
     auto packetNode = std::make_shared<ASTPacket>();
     packetNode->type = NodeType::PACKET;
     packetNode->defaultSettings = nullptr;
+    bool isLambdaSegment = (eatToken(IDENTIFIER).value == "segment" && currentPacket); // Consumed 'packet'/'segment' token
     currentPacket = &(*packetNode);
-
-    eatToken(IDENTIFIER); // Consume 'packet' token
     packetNode->name = eatToken(IDENTIFIER).value;
 
     eatToken(OPEN_BRACKET);
@@ -274,9 +275,11 @@ std::shared_ptr<ASTPacket> AST::parsePacket() {
         masterIndex++;
     }
     eatToken(CLOSE_BRACKET);
-    currentPacket = nullptr;
     packetNode->sizeInBits = getStructureSize(packetNode);
-    primitiveBitSizes[packetNode->name] = packetNode->sizeInBits;
+    if (!isLambdaSegment) {
+        currentPacket = nullptr;
+        primitiveBitSizes[packetNode->name] = packetNode->sizeInBits;
+    }
     return packetNode;
 }
 
