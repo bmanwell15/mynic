@@ -98,7 +98,6 @@ TODO:
 
 - Mathematical expressions in values:
     {
-        uint16 val {expr: bytes * 2}
         uint16 val {expr: val * 2}
     }
 - Binary operators in values? -> May not be needed simply because of the nature of bitfields

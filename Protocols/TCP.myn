@@ -26,8 +26,7 @@ segment TCP_HEADER {
     // Payload data preceeds
 }
 
-packet BasicPacket {
+packet TCP_PACKET {
     TCP_HEADER header;
-    byte payload;
-    // bytes payload[TO_END]; // Actual implementation of TCP_PACKET
+    bytes payload[TO_END];
 }

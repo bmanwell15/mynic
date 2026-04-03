@@ -51,8 +51,7 @@ segment IP_HEADER {
     // bytes options[headerLength - lengthOfRestOfHeader];
 }
 
-packet BasicPacket {
+packet IP_PACKET {
     IP_HEADER header;
-    byte payload;
-    // bytes payload[TO_END];
+    bytes payload[TO_END];
 }

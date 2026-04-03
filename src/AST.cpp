@@ -530,7 +530,9 @@ std::shared_ptr<ASTBitfield> AST::parseBitfield() {
     blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
     while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
         std::shared_ptr<ASTField> var = parseField();
-        bitfield.subfields.push_back(var);
+        if (var->type != NodeType::ROOT_NODE)
+            bitfield.subfields.push_back(var);
+
         if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CLOSE_BRACKET) break;
         eatToken({SEMI_COLON, NEW_LINE});
     }

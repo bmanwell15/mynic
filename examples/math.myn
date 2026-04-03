@@ -1,0 +1,5 @@
+
+
+packet BasicPacket {
+    uint8 num {expr: num * 2};
+}
