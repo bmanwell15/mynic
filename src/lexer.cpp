@@ -74,7 +74,7 @@ std::vector<Token> Lexer::tokenize(const std::string content) {
             ttype = LOGIC_GATE;
             std::string gate = std::string(1, ch) + std::string(1, content[++i]);
             tokens.push_back(createToken(gate, ttype, blockDepth, lineNumber)); 
-        } else if ((ch == '+' || ch == '-' || ch == '*' || ch == '/') && content[i + 1] != '=') { // HANDLE BINARY OPERATORS
+        } else if ((ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '%') && content[i + 1] != '=') { // HANDLE BINARY OPERATORS
             ttype = BINARY_OPERATOR;
             tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
         } else if (ch == '=' && content[i + 1] != '=') { // Make sure it's not double equals '=='

@@ -50,10 +50,33 @@ struct ASTField {
     NodeType type;
 };
 
+struct ASTExpression {
+    virtual ~ASTExpression() = default;
+};
+
+struct ASTExpressionInt : public ASTExpression {
+    uint64_t value;
+};
+
+struct ASTExpressionDouble : public ASTExpression {
+    double value;
+};
+
+struct ASTExpressionVariable : public ASTExpression {
+    std::string variableName;
+};
+
+struct ASTExpressionBinaryOperation : public ASTExpression {
+    std::string op;
+    std::shared_ptr<ASTExpression> left;
+    std::shared_ptr<ASTExpression> right;
+};
+
 struct ASTPrimitiveValueSettings {
     bool endianBig = true;
     bool isHidden = false;
     std::string units = "";
+    std::shared_ptr<ASTExpression> exprASTTree;
 };
 
 struct ASTPrimitiveValue : public ASTField {
@@ -169,6 +192,10 @@ class AST {
         std::shared_ptr<ASTBitfield> parseBitfield();
         std::shared_ptr<ASTUnion> parseUnion();
         std::shared_ptr<ASTBranch> parseBranch();
+
+        std::shared_ptr<ASTExpression> parseFactor();
+        std::shared_ptr<ASTExpression> parseTerm();
+        std::shared_ptr<ASTExpression> parseExpression();
 };
 
 #endif

@@ -79,9 +79,13 @@ Loading Mynic File
         byte lastByte;
     }
 }
-
+- Mathematical expressions in values:
+    {
+        uint16 val {expr: val * 2}
+    }
 TODO:
 -------------------------------
+- Mathematical expressions in Array indexes
 - Repeat fields:
     {
         repeat (10) {
@@ -94,11 +98,6 @@ TODO:
         
         while (!END_OF_STREAM) { ... }
         while (currentByte != 0x00) { ... }
-    }
-
-- Mathematical expressions in values:
-    {
-        uint16 val {expr: val * 2}
     }
 - Binary operators in values? -> May not be needed simply because of the nature of bitfields
 - STD math functions

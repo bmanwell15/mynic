@@ -392,6 +392,73 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
     throw std::runtime_error("Unsupported datatype: " + datatype);
 }
 
+template<class... T> struct overloaded : T... { using T::operator()...; };
+template<class... T> overloaded(T...) -> overloaded<T...>;
+Value evaluateBinaryOp(std::string op, Value left, Value right) {
+    return std::visit(overloaded{
+        [&](int l, int r) -> Value { // 1. Handle pure integer math (to preserve int types)
+            if (op == "+") return l + r;
+            if (op == "*") return l * r;
+            if (op == "-") return l - r;
+            if (op == "/") return (r != 0) ? l / r : 0;
+            if (op == "%") return l % r;
+            return 0;
+        },
+        [&](double l, double r) -> Value { // 2. Handle pure double math
+            if (op == "+") return l + r;
+            if (op == "*") return l * r;
+            if (op == "-") return l - r;
+            if (op == "/") return l / r;
+            return 0.0;
+        },
+        [&](auto l, auto r) -> Value { // 3. Handle mixed or other types safely
+            if constexpr (std::is_arithmetic_v<decltype(l)> && std::is_arithmetic_v<decltype(r)>) {
+                if (op == "+") return static_cast<double>(l) + static_cast<double>(r);
+                if (op == "*") return static_cast<double>(l) * static_cast<double>(r);
+                if (op == "-") return static_cast<double>(l) - static_cast<double>(r);
+                if (op == "/") return static_cast<double>(l) / static_cast<double>(r);
+                if (op == "%") return static_cast<uint64_t>(l) % static_cast<uint64_t>(r); 
+            }
+            if constexpr (std::is_same_v<decltype(l), std::string> && std::is_same_v<decltype(r), std::string>) {
+                if (op == "+") return static_cast<std::string>(l) + static_cast<std::string>(r);
+                throw std::runtime_error("strings can only be added together.");
+            }
+            throw std::runtime_error("Invalid types for binary operator: " + op);
+        }
+    }, left, right);
+}
+
+Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
+    if (auto n = std::dynamic_pointer_cast<ASTExpressionInt>(node)) {
+        return n->value;
+    }
+    if (auto n = std::dynamic_pointer_cast<ASTExpressionDouble>(node)) {
+        return n->value;
+    }
+    if (auto n = std::dynamic_pointer_cast<ASTExpressionVariable>(node)) {
+        if (n->variableName == interpretedPrimitive->name) 
+            return interpretedPrimitive->value;
+        
+        auto possibleVariableCallValue = getParsedValue(rootNode, n->variableName, bitQueue);
+        if (!possibleVariableCallValue.has_value()) throw std::runtime_error("Var'" + n->variableName + "' not found in expr.");
+        return possibleVariableCallValue.value();
+    }
+    if (auto b = std::dynamic_pointer_cast<ASTExpressionBinaryOperation>(node)) {
+        Value leftVal = evaluateASTExpression(interpretedPrimitive, b->left, bitQueue, rootNode);
+        Value rightVal = evaluateASTExpression(interpretedPrimitive, b->right, bitQueue, rootNode);
+
+        return evaluateBinaryOp(b->op, leftVal, rightVal);
+    }
+    return 0;
+}
+
+void Interpreter::enforcePostInterpretationSettings(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
+    if (!interpretedPrimitive->settings) return;
+    if (interpretedPrimitive->settings->exprASTTree) {
+        interpretedPrimitive->value = evaluateASTExpression(interpretedPrimitive, interpretedPrimitive->settings->exprASTTree, bitQueue, rootNode);
+    }
+}
+
 
 std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket& packetDef, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
     auto packet = std::make_shared<InterpretedPacket>();
@@ -411,18 +478,19 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
     if (field->type == NodeType::PRIMITIVE) {
         auto primField = std::static_pointer_cast<ASTPrimitiveValue>(field);
 
-        if (astTree->properties[primField->datatype]) { // If segment exists?
+        if (astTree->properties[primField->datatype]) { // If segment exists
             return interpretField(astTree->properties[primField->datatype], bitQueue, rootNode);
         }
 
-        InterpretedPrimitiveValue interpretedField;
-        interpretedField.name = primField->name;
-        interpretedField.sizeInBits = primField->sizeInBits;
-        interpretedField.type = NodeType::PRIMITIVE;
-        interpretedField.settings = primField->settings;
-        interpretedField.datatype = primField->datatype;
-        interpretedField.value = interpretValue(*primField, bitQueue);
-        return std::make_shared<InterpretedPrimitiveValue>(interpretedField);
+        auto interpretedField = std::make_shared<InterpretedPrimitiveValue>();
+        interpretedField->name = primField->name;
+        interpretedField->sizeInBits = primField->sizeInBits;
+        interpretedField->type = NodeType::PRIMITIVE;
+        interpretedField->settings = primField->settings;
+        interpretedField->datatype = primField->datatype;
+        interpretedField->value = interpretValue(*primField, bitQueue);
+        enforcePostInterpretationSettings(interpretedField, bitQueue, rootNode);
+        return interpretedField;
     } else if (field->type == NodeType::BITFIELD) {
         auto bitfieldDef = std::static_pointer_cast<ASTBitfield>(field);
         InterpretedBitfield interpretedBitfield;

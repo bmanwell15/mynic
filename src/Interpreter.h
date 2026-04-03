@@ -43,6 +43,8 @@ class Interpreter {
         std::shared_ptr<InterpretedField> interpretField(std::shared_ptr<ASTField> field, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode = nullptr);
         Value interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue);
         std::optional<Value> getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName, BitQueue& bitQueue);
+        void enforcePostInterpretationSettings(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
+        Value evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
 };
 
 #endif

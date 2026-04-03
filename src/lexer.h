@@ -21,20 +21,19 @@ enum TokenType { // Holds all of the allowed token values for the language
     STRING_LITERAL,
 
     INCREMENT_BY_1, // ++ & --
-    BINARY_OPERATOR, // +, -, *, /
+    BINARY_OPERATOR, // +, -, *, /, %
     LOGIC_GATE, // &&, ||, !
     CONDITION_OPERATOR, // ==, !=, <=, >=, >, <
     IDENTIFIER, // Any string of text, such as variables, keywords, functions, etc. The IDENTIFIER is specified in the AST
     
-    EQUALS, // Can be an assignment operator, such as "x = 10" but can also be used for decloration "int x = 10"
+    EQUALS,
     OPEN_PAREN, CLOSE_PAREN,
     OPEN_BRACKET, CLOSE_BRACKET,
     OPEN_SQUARE_BRACKET, CLOSE_SQUARE_BRACKET,
     COMMA, PERIOD, COLON, EXCLAMATION_POINT,
     ASTERICT,
 
-    FUNCTION_CALL,
-    FUNCTION_DECLORATION,
+    FUNCTION_CALL
 };
 
 struct Token {

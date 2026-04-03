@@ -402,6 +402,8 @@ std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {
         } else if (settingToken.value == "units") {
             Token unitVal = eatToken(STRING_LITERAL);
             settings->units = removeQuotes(unitVal.value);
+        } else if (settingToken.value == "expr") {
+            settings->exprASTTree = parseExpression();
         } else {
             ErrorHandler::throwError("Unknown primitive setting: " + settingToken.value, tokens, masterIndex - 1);
         }
@@ -630,4 +632,73 @@ std::shared_ptr<ASTBranch> AST::parseBranch() {
         eatOptionalToken({SEMI_COLON, NEW_LINE});
     }
     return std::make_shared<ASTBranch>(branch);
+}
+
+
+// 1. Factors: Numbers, Variables, or ( Expressions )
+std::shared_ptr<ASTExpression> AST::parseFactor() {
+    Token token = eatToken({INT_LITERAL, DOUBLE_LITERAL, OPEN_PAREN, IDENTIFIER});
+
+    if (token.type == INT_LITERAL) {
+        auto intLiteral = std::make_shared<ASTExpressionInt>();
+        intLiteral->value = std::stoull(token.value);
+        return intLiteral;
+    }
+
+    if (token.type == DOUBLE_LITERAL) {
+        auto doubleLiteral = std::make_shared<ASTExpressionDouble>();
+        doubleLiteral->value = std::stod(token.value);
+        return doubleLiteral;
+    }
+
+    if (token.type == IDENTIFIER) {
+        auto variableCall = std::make_shared<ASTExpressionVariable>();
+        variableCall->variableName = token.value;
+        return variableCall;
+    }
+
+    if (token.type == OPEN_PAREN) {
+        auto node = parseExpression();
+        eatToken(CLOSE_PAREN);
+        return node;
+    }
+    ErrorHandler::throwError("Unexpected token in factor", tokens, masterIndex);
+    return std::make_shared<ASTExpression>();
+};
+
+// 2. Terms: Handles Multiplication and Division
+std::shared_ptr<ASTExpression> AST::parseTerm() {
+    auto node = parseFactor();
+
+    Token nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+    while (nextToken.type == BINARY_OPERATOR && (nextToken.value == "*" || nextToken.value == "/")) {
+        std::string operation = eatToken(BINARY_OPERATOR).value;
+        auto right = parseFactor();
+        auto binOpNode = std::make_shared<ASTExpressionBinaryOperation>();
+        binOpNode->op = operation;
+        binOpNode->left = node;
+        binOpNode->right = right;
+        node = binOpNode;
+        nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+    }
+    return node;
+};
+
+
+// 3. Expressions: Handles Addition and Subtraction
+std::shared_ptr<ASTExpression> AST::parseExpression() {
+    auto node = parseTerm();
+
+    Token nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+    while (nextToken.type == BINARY_OPERATOR && (nextToken.value == "+" || nextToken.value == "-" || nextToken.value == "%")) {
+        std::string operation = eatToken(BINARY_OPERATOR).value;
+        auto right = parseTerm();
+        auto binOpNode = std::make_shared<ASTExpressionBinaryOperation>();
+        binOpNode->op = operation;
+        binOpNode->left = node;
+        binOpNode->right = right;
+        node = binOpNode;
+        nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+    }
+    return node;
 }

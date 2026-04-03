@@ -113,14 +113,16 @@ packet BasicPacket {
     // uint8 num1;
     // bytes rest[TO_END];
 
-    byte num;
-    segment GLUTEN {
-        uint8 wow;
-        byte cool;
-    }
-    bitfield bit1 {
-        bits wow : 7;
-        bit wow2 : 1;
-    }
+    //segment GLUTEN {
+    //    uint8 wow;
+    //    byte cool;
+    //}
+    //bitfield bit1 {
+    //    bits wow : 7;
+    //    bit wow2 : 1;
+    //}
+
+    //uint8 wow;
+    //uint8 num {expr: num + wow - 1};
 };
 

@@ -14,9 +14,9 @@ bool Mynic::loadFile(std::string& filename) {
 
     std::vector<Token> tokens = Lexer::tokenize(fileContent);
 
-    // for (int i = 0; i < tokens.size(); i++) { // Debug only
-    //     Lexer::printToken(tokens[i]);
-    // }
+    for (int i = 0; i < tokens.size(); i++) { // Debug only
+        Lexer::printToken(tokens[i]);
+    }
 
     if (rootNode) {
         std::shared_ptr<ASTNode> importedRootNode = ast.parseTokensToAST(tokens);
