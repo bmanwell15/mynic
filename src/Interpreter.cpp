@@ -534,6 +534,8 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
                 arrayDef->length = std::get<unsigned long>(parsedVal.value());
             } else if (std::holds_alternative<long>(parsedVal.value())) {
                 arrayDef->length = static_cast<size_t>(std::get<long>(parsedVal.value()));
+            } else if (std::holds_alternative<double>(parsedVal.value())) {
+                arrayDef->length = static_cast<size_t>(std::get<double>(parsedVal.value()));
             } else {
                 throw std::runtime_error("Dynamic array length must be a numeric value, not " + std::string(parsedVal.value().index() ? "complex" : "string"));
             }

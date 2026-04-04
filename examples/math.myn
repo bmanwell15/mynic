@@ -2,7 +2,7 @@
 
 packet BasicPacket {
     uint8 wow;
-    uint8 num {expr: num + wow - 1};
+    uint8 num {expr: num + 1};
     //float dMath {expr: dMath * 3.1415};
-    uint8 modo {expr: modo % 8};
+    byte arr[num];
 }
