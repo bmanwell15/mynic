@@ -133,9 +133,9 @@ struct ASTDefault : public ASTField {
 };
 
 struct ASTArray : public ASTField {
-    size_t length = 0;
+    size_t length;
     size_t sizeInBits = 0;
-    std::string dynamicLength;
+    std::shared_ptr<ASTExpression> dynamicLength;
     std::shared_ptr<ASTPrimitiveValue> elementSchema;
 };
 

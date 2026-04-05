@@ -167,7 +167,7 @@ size_t AST::getStructureSize(std::shared_ptr<ASTField> field) {
     }
     if (field->type == NodeType::ARRAY) {
         auto arrayField = std::static_pointer_cast<ASTArray>(field);
-        arrayField->sizeInBits = arrayField->length * getStructureSize(arrayField->elementSchema);
+        arrayField->sizeInBits = getStructureSize(arrayField->elementSchema);
         return arrayField->sizeInBits;
     }
     return 0;
@@ -342,16 +342,21 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
         auto arr = std::make_shared<ASTArray>();
         arr->elementSchema = field;
         arr->type = NodeType::ARRAY;
-        size_t arrLength = parseVariableCall();
-        if (arrLength == 0) {
-            arr->dynamicLength = eatToken(IDENTIFIER).value;
-            if (arr->dynamicLength == "TO_END") toEndFlagUsed = true;
-            if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == PERIOD) { // if variable takes the form (enum.attribute)
-                arr->dynamicLength += eatToken(PERIOD).value;
-                arr->dynamicLength += eatToken(IDENTIFIER).value;
+        arr->dynamicLength = parseExpression();
+        auto tryEval = interpreter->tryEvaluateASTExpression(arr->dynamicLength);
+        if (tryEval.has_value()) {
+            if (std::holds_alternative<uint64_t>(tryEval.value())) {
+                arr->length = std::get<uint64_t>(tryEval.value());
+            } else if (std::holds_alternative<int64_t>(tryEval.value())) {
+                arr->length = static_cast<size_t>(std::get<int64_t>(tryEval.value()));
+            } else if (std::holds_alternative<unsigned long>(tryEval.value())) {
+                arr->length = std::get<unsigned long>(tryEval.value());
+            } else if (std::holds_alternative<long>(tryEval.value())) {
+                arr->length = static_cast<size_t>(std::get<long>(tryEval.value()));
+            } else if (std::holds_alternative<double>(tryEval.value())) {
+                arr->length = static_cast<size_t>(std::get<double>(tryEval.value()));
             }
         }
-        arr->length = arrLength;
         eatToken(CLOSE_SQUARE_BRACKET);
         field->sizeInBits = primitiveBitSizes[field->datatype];
         field->settings = parsePrimitiveSettings();
@@ -654,6 +659,11 @@ std::shared_ptr<ASTExpression> AST::parseFactor() {
     if (token.type == IDENTIFIER) {
         auto variableCall = std::make_shared<ASTExpressionVariable>();
         variableCall->variableName = token.value;
+        if (variableCall->variableName == "TO_END") toEndFlagUsed = true;
+        if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == PERIOD) { // if variable takes the form (enum.attribute)
+            variableCall->variableName += eatToken(PERIOD).value;
+            variableCall->variableName += eatToken(IDENTIFIER).value;
+        }
         return variableCall;
     }
 

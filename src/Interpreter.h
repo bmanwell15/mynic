@@ -33,6 +33,7 @@ class Interpreter {
         std::shared_ptr<ASTPrimitiveValueSettings> globalSettings;
 
         DecodedPacket interpretBytes(const std::vector<uint8_t>& dataBytes, const std::string& packetName, const  std::shared_ptr<ASTNode>& rootNode);
+        std::optional<Value> tryEvaluateASTExpression(std::shared_ptr<ASTExpression> node);
     
     private:
         std::shared_ptr<DecodedPacket> decodedPacket;

@@ -83,9 +83,9 @@ Loading Mynic File
     {
         uint16 val {expr: val * 2}
     }
+- Mathematical expressions in Array indexes
 TODO:
 -------------------------------
-- Mathematical expressions in Array indexes
 - Repeat fields:
     {
         repeat (10) {

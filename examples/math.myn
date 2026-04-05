@@ -1,8 +1,16 @@
 
+define YUP 0x01
+
+enum uint8 E1 {
+    ZERO = 0 {attr: 1}
+    ONE = 1 {attr: 2}
+}
 
 packet BasicPacket {
     uint8 wow;
     uint8 num {expr: num + 1};
     //float dMath {expr: dMath * 3.1415};
-    byte arr[num];
+    // E1 enum1;
+    // byte arr[enum1.attr + 1];
+    byte j[2 + 1 + YUP];
 }

@@ -436,8 +436,11 @@ Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveVal
         return n->value;
     }
     if (auto n = std::dynamic_pointer_cast<ASTExpressionVariable>(node)) {
-        if (n->variableName == interpretedPrimitive->name) 
+        if (interpretedPrimitive && n->variableName == interpretedPrimitive->name) 
             return interpretedPrimitive->value;
+        
+        if (ast->definedVariables.find(n->variableName) != ast->definedVariables.end())
+            return ast->definedVariables[n->variableName];
         
         auto possibleVariableCallValue = getParsedValue(rootNode, n->variableName, bitQueue);
         if (!possibleVariableCallValue.has_value()) throw std::runtime_error("Var'" + n->variableName + "' not found in expr.");
@@ -450,6 +453,25 @@ Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveVal
         return evaluateBinaryOp(b->op, leftVal, rightVal);
     }
     return 0;
+}
+
+std::optional<Value> Interpreter::tryEvaluateASTExpression(std::shared_ptr<ASTExpression> node) {
+    if (auto n = std::dynamic_pointer_cast<ASTExpressionInt>(node)) {return n->value;}
+    if (auto n = std::dynamic_pointer_cast<ASTExpressionDouble>(node)) {return n->value;}
+    if (auto n = std::dynamic_pointer_cast<ASTExpressionVariable>(node)) {
+        if (ast->definedVariables.find(n->variableName) != ast->definedVariables.end())
+            return ast->definedVariables[n->variableName];
+    }
+    if (auto b = std::dynamic_pointer_cast<ASTExpressionBinaryOperation>(node)) {
+        auto left = tryEvaluateASTExpression(b->left);
+        if (!left) return std::nullopt;
+
+        auto right = tryEvaluateASTExpression(b->right);
+        if (!right) return std::nullopt;
+
+        return evaluateBinaryOp(b->op, *left, *right);
+    }
+    return std::nullopt;
 }
 
 void Interpreter::enforcePostInterpretationSettings(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
@@ -521,23 +543,20 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         interpretedArray.name = arrayDef->elementSchema->name;
         interpretedArray.type = NodeType::ARRAY;
 
-        if (arrayDef->dynamicLength != "") {
-            auto parsedVal = getParsedValue(rootNode, arrayDef->dynamicLength, bitQueue);
-            if (!parsedVal.has_value())
-                throw std::runtime_error("Var not defined.");
-            // Extract numeric value from Value variant
-            if (std::holds_alternative<uint64_t>(parsedVal.value())) {
-                arrayDef->length = std::get<uint64_t>(parsedVal.value());
-            } else if (std::holds_alternative<int64_t>(parsedVal.value())) {
-                arrayDef->length = static_cast<size_t>(std::get<int64_t>(parsedVal.value()));
-            } else if (std::holds_alternative<unsigned long>(parsedVal.value())) {
-                arrayDef->length = std::get<unsigned long>(parsedVal.value());
-            } else if (std::holds_alternative<long>(parsedVal.value())) {
-                arrayDef->length = static_cast<size_t>(std::get<long>(parsedVal.value()));
-            } else if (std::holds_alternative<double>(parsedVal.value())) {
-                arrayDef->length = static_cast<size_t>(std::get<double>(parsedVal.value()));
+        if (arrayDef->dynamicLength) {
+            auto parsedVal = evaluateASTExpression(nullptr, arrayDef->dynamicLength, bitQueue, rootNode);
+            if (std::holds_alternative<uint64_t>(parsedVal)) {
+                arrayDef->length = std::get<uint64_t>(parsedVal);
+            } else if (std::holds_alternative<int64_t>(parsedVal)) {
+                arrayDef->length = static_cast<size_t>(std::get<int64_t>(parsedVal));
+            } else if (std::holds_alternative<unsigned long>(parsedVal)) {
+                arrayDef->length = std::get<unsigned long>(parsedVal);
+            } else if (std::holds_alternative<long>(parsedVal)) {
+                arrayDef->length = static_cast<size_t>(std::get<long>(parsedVal));
+            } else if (std::holds_alternative<double>(parsedVal)) {
+                arrayDef->length = static_cast<size_t>(std::get<double>(parsedVal));
             } else {
-                throw std::runtime_error("Dynamic array length must be a numeric value, not " + std::string(parsedVal.value().index() ? "complex" : "string"));
+                throw std::runtime_error("Dynamic array length must be a numeric value, not " + std::string(parsedVal.index() ? "complex" : "string"));
             }
         }
 
