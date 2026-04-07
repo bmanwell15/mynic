@@ -18,7 +18,7 @@ enum uint8 IP_ENCAPSULATED_PROTOCOL { // Enum incomplete
 segment IP_HEADER {
     bitfield versionAndHeaderLength {
         uint version : 4;
-        uint headerLength : 4 //{expr: baseUint * 32}
+        uint headerLengthBits : 4 {expr: headerLength * 32};
     }
 
     bitfield typesOfService {
@@ -36,7 +36,7 @@ segment IP_HEADER {
         bool moreFragments : 1;
 
         // Fragments
-        uint fragmentOffset : 13; // Actual value needs to be multiplied by 8
+        uint fragmentOffset : 13 {expr: fragmentOffset * 8};
     }
 
     union timeToLeave {
@@ -46,9 +46,9 @@ segment IP_HEADER {
 
     IP_ENCAPSULATED_PROTOCOL protocol;
     bytes2 checksum;
-    uint8 sourceAddress[4]; // change to IP Address type
-    uint8 destinationAddress[4];
-    // bytes options[headerLength - lengthOfRestOfHeader];
+    ipAddress32 sourceAddress[4];
+    ipAddress32 destinationAddress[4];
+    bytes options[headerLength - lengthOfRestOfHeader];
 }
 
 packet IP_PACKET {

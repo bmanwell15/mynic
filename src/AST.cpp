@@ -512,8 +512,13 @@ std::shared_ptr<ASTEnum> AST::parseEnum() {
 std::shared_ptr<ASTField> AST::parseDefine() {
     eatToken(IDENTIFIER); // Eat define token
     std::string varName = eatToken(IDENTIFIER).value;
-    Value varValue = convertTokenValue(eatToken({INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL, BOOL_LITERAL}));
-    definedVariables[varName] = varValue;
+    auto varExpression = parseExpression();
+    auto varValueOption = interpreter->tryEvaluateASTExpression(varExpression);
+    if (varValueOption.has_value()) {
+        definedVariables[varName] = varValueOption.value();
+    } else {
+        ErrorHandler::throwError("defines cannot contain variables in expression.", tokens, masterIndex);
+    }
     return std::make_shared<ASTField>();
 }
 

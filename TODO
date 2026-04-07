@@ -83,7 +83,8 @@ Loading Mynic File
     {
         uint16 val {expr: val * 2}
     }
-- Mathematical expressions in Array indexes
+- Mathematical expressions in Array indexes & defined variable
+- PrintSegment() in Mynic class
 TODO:
 -------------------------------
 - Repeat fields:
@@ -98,9 +99,19 @@ TODO:
         
         while (!END_OF_STREAM) { ... }
         while (currentByte != 0x00) { ... }
+        // break, continue keywords?
     }
+- If statements
+{
+    if (condition == true) {
+
+    } else if (condition == true) {
+
+    } else {
+
+    }
+}
 - Binary operators in values? -> May not be needed simply because of the nature of bitfields
-- STD math functions
 - In file byte processing:
     {
         interpret 656ED7 as PacketName
@@ -113,6 +124,7 @@ TODO:
                 includeTimestamp: true,
                 includeRawBytes: true,
                 includePacketName: true,
+                printInSchema: true, // will not print in printSchema() function in the Mynic class
 
                 // May not include file handling in API, might leave that to the end user
                 saveToFile: false,
@@ -123,20 +135,20 @@ TODO:
     }
 - API call which counts and runs which bit position corresponds to which field (example, uint16 field2; is byte 3 & 4). Note that this may be impossible due to dynamic sizes.
 - Throw warnings during interpretation
+- return keyword to stop parsing child segment and return to parent
 - STD Vars and Functions:
     Vars:
         TO_END
-        PACKET_BYTE_LENGTH
-        PACKET_BIT_LENGTH
-        BIT_POSITION
-        BYTE_POSITION
-        END_OF_STREAM -> Boolean
-    Function:
-        MAX(int x, int x2, ...)
-        MIN(int x, int x2, ...)
+        END_OF_STREAM/EOF -> Boolean
+    Functions:
+        math.max(int x, int x2, ...)
+        math.min(int x, int x2, ...)
         POW/SQRT/EXP/LOG, etc....
         REWIND(uint numOfBits)
         SKIP(uint numOfBits)
+        SEEK(uint bitPosition) // Sets the bitPos in the stream
+        TERMINATE() // Stops the parsing
+
 - String Support (Look for string length OR null terminator)
 {
     string variableLengthStr; // Looks for null termination code (0x00)

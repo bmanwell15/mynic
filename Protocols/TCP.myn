@@ -18,12 +18,7 @@ segment TCP_HEADER {
     uint16 window {units: "Window Size Units"}; // bytes 14-15
     bytes2 checksum; // bytes 16-17
     bytes2 urgentPointer; // bytes 18-19
-    bytes4 options[dataOffset]; // Actual is (dataOffset - 5) (*4 if one byte, but bytes4 accounts for that)
-
-    // bytes4 options[dataOffset - 5];
-    // bytes4 options[SUBTRACT(dataOffset, 5)];
-
-    // Payload data preceeds
+    bytes4 options[dataOffset - 5]; // (dataOffset - 5 )*4 if one byte, but bytes4 accounts for that
 }
 
 packet TCP_PACKET {

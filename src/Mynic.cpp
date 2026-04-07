@@ -90,6 +90,20 @@ void Mynic::printPacket(const std::string& packetName) {
     std::cout << "Packet " << packetName << " not found." << std::endl;
 }
 
+void Mynic::printSegment(const std::string& segmentName) {
+    for (const auto& [name, field] : rootNode->properties) {
+        if (field && field->type == NodeType::SEGMENT && name == segmentName) {
+            auto packet = std::static_pointer_cast<ASTPacket>(field);
+            std::cout << packet->name << ':' << std::endl;
+            for (const auto& pktField : packet->fields) {
+                printPacketField(pktField, 1);
+            }
+            return;
+        }
+    }
+    std::cout << "Segment " << segmentName << " not found." << std::endl;
+}
+
 void Mynic::printSchema() {
     for (const auto& [name, packet] : rootNode->properties) {
         if (packet->type == NodeType::PACKET) {

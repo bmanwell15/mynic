@@ -16,7 +16,7 @@ enum uint8 EnumName {
     THREE
 }
 
-define ARR_SIZE 0x0A
+define ARR_SIZE 0x0A - 2 * 2
 
 typedef bool byte_t
 
@@ -124,5 +124,6 @@ packet BasicPacket {
 
     //uint8 wow;
     //uint8 num {expr: num + wow - 1};
+    // uint8 arr[2] {expr: arr * 2}; // Performs the expr function for each element
 };
 

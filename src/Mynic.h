@@ -23,6 +23,7 @@ class Mynic {
 
         void printSchema();
         void printPacket(const std::string& packetName);
+        void printSegment(const std::string& segmentName);
 
         DecodedPacket decodePacket(const std::string& strBytes, const std::string& packetName, bool asBits=false);
         DecodedPacket decodePacket(const std::vector<uint8_t>& dataBytes, const std::string& packetName);
