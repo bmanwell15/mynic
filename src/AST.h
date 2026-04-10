@@ -33,7 +33,8 @@ enum class NodeType {
     ENUM,
     TYPEDEF,
     VARIABLE,
-    DEFAULT_BLOCK
+    DEFAULT_BLOCK,
+    SWITCH
 };
 
 enum class ConditionOperators {
@@ -124,8 +125,14 @@ struct ASTCondition : public ASTField {
 
 struct ASTBranch : public ASTField {
     ASTPrimitiveValue parseAs;
-    std::vector<std::pair<std::string, std::shared_ptr<ASTCondition>>> destinationsAndConditions; // std::pair<destination, condition>
-    std::string destinationDefault;
+    std::vector<std::pair<std::shared_ptr<ASTField>, std::shared_ptr<ASTCondition>>> destinationsAndConditions;
+    std::shared_ptr<ASTField> destinationDefault;
+};
+
+struct ASTSwitch : public ASTField {
+    std::string variableName;
+    std::vector<std::pair<std::shared_ptr<ASTField>, std::shared_ptr<ASTCondition>>> destinationsAndConditions;
+    std::shared_ptr<ASTField> destinationDefault;
 };
 
 struct ASTDefault : public ASTField {
@@ -192,6 +199,7 @@ class AST {
         std::shared_ptr<ASTBitfield> parseBitfield();
         std::shared_ptr<ASTUnion> parseUnion();
         std::shared_ptr<ASTBranch> parseBranch();
+        std::shared_ptr<ASTSwitch> parseSwitch();
 
         std::shared_ptr<ASTExpression> parseFactor();
         std::shared_ptr<ASTExpression> parseTerm();

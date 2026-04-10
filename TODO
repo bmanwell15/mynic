@@ -53,8 +53,16 @@ Loading Mynic File
         SEGMENT3 defaults;
     }
 
-    branch { // byte is assumed;
-        SEGMENT1 if 0x00;
+    branch { // uint8 is assumed;
+        SEGMENT1 if 0;
+    }
+    branch { // lambda segment definitions within branches
+        segment SEG {
+            uint8 num;
+        } if 1;
+        segment WOWSEG {
+            bool isTrue;
+        } defaults;
     }
 - Complex Conditional checking in branches:
     branch byte {
@@ -85,6 +93,14 @@ Loading Mynic File
     }
 - Mathematical expressions in Array indexes & defined variable
 - PrintSegment() in Mynic class
+- Switch statements
+{
+    switch varName { // Similar format to branch statements, only switch statements check the value of a variable
+        SEGMENT1 if true;
+        SEGMENT2 if false;
+        SEGMENT3 defaults;
+    }
+}
 TODO:
 -------------------------------
 - Repeat fields:
@@ -101,16 +117,6 @@ TODO:
         while (currentByte != 0x00) { ... }
         // break, continue keywords?
     }
-- If statements
-{
-    if (condition == true) {
-
-    } else if (condition == true) {
-
-    } else {
-
-    }
-}
 - Binary operators in values? -> May not be needed simply because of the nature of bitfields
 - In file byte processing:
     {

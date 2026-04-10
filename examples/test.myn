@@ -125,5 +125,30 @@ packet BasicPacket {
     //uint8 wow;
     //uint8 num {expr: num + wow - 1};
     // uint8 arr[2] {expr: arr * 2}; // Performs the expr function for each element
+
+    //branch {
+    //   segment SEG {
+    //        uint8 num;
+    //    } if 1;
+    //    segment SEG2 {
+    //        byte byte1;
+    //    } if 2;
+    //    segment WOWSEG {
+    //       bool isTrue;
+    //    } defaults;
+    //}
+
+    uint8 check;
+    switch check {
+        segment SEGMENT {
+            uint8 asNum;
+        } if 1;
+        segment SEGMENT {
+            byte asByte;
+        } if 2;
+        segment SEGMENT {
+            bool asBool;
+        } defaults;
+    }
 };
 

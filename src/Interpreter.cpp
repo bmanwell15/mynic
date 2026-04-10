@@ -583,12 +583,34 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
                 nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_THAN && parsedPrimitiveVal > nameConditionPair.second->parsedCheckValue ||
                 nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_EQUAL_THAN && parsedPrimitiveVal >= nameConditionPair.second->parsedCheckValue
             ) {
-                return interpretPacket(*(std::static_pointer_cast<ASTPacket>(astTree->properties[nameConditionPair.first])), bitQueue, rootNode);
+                return interpretField(nameConditionPair.first, bitQueue, rootNode);
             }
         }
 
-        if (branchDef->destinationDefault != "") {
-            return interpretPacket(*(std::static_pointer_cast<ASTPacket>(astTree->properties[branchDef->destinationDefault])), bitQueue, rootNode);
+        if (branchDef->destinationDefault) {
+            return interpretField(branchDef->destinationDefault, bitQueue, rootNode);
+        }
+    }  else if (field->type == NodeType::SWITCH) {
+        auto switchDef = std::static_pointer_cast<ASTSwitch>(field);
+        auto variableValOpt = getParsedValue(rootNode, switchDef->variableName, bitQueue);
+        if (!variableValOpt.has_value())
+            throw std::runtime_error("Variable in switch not found");
+        Value variableVal = variableValOpt.value();
+        for (const auto& nameConditionPair : switchDef->destinationsAndConditions) {
+            if (
+                nameConditionPair.second->conditionOperator == ConditionOperators::EQUAL && variableVal == nameConditionPair.second->parsedCheckValue ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::NOT_EQUAL && variableVal != nameConditionPair.second->parsedCheckValue ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_THAN && variableVal < nameConditionPair.second->parsedCheckValue ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_EQUAL_THAN && variableVal <= nameConditionPair.second->parsedCheckValue ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_THAN && variableVal > nameConditionPair.second->parsedCheckValue ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_EQUAL_THAN && variableVal >= nameConditionPair.second->parsedCheckValue
+            ) {
+                return interpretField(nameConditionPair.first, bitQueue, rootNode);
+            }
+        }
+
+        if (switchDef->destinationDefault) {
+            return interpretField(switchDef->destinationDefault, bitQueue, rootNode);
         }
     }
 

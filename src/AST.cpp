@@ -235,6 +235,10 @@ std::shared_ptr<ASTField> AST::parseField() {
         return parseBranch();
     }
 
+    if (token.type == IDENTIFIER && token.value == "switch") {
+        return parseSwitch();
+    }
+
     if (token.type == IDENTIFIER && token.value == "define") {
         return parseDefine();
     }
@@ -615,13 +619,16 @@ std::shared_ptr<ASTBranch> AST::parseBranch() {
     eatToken(OPEN_BRACKET);
     blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
     while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
-        std::string destination = eatToken(IDENTIFIER).value; // Destination
+        eatOptionalToken({NEW_LINE});
+        auto destination = parseField();
+        // std::string destination = eatToken(IDENTIFIER).value; // Destination
         std::string ifOrDefaultsKeyword = eatToken(IDENTIFIER).value;
         if (ifOrDefaultsKeyword == "defaults") {
             branch.destinationDefault = destination;
             eatOptionalToken({SEMI_COLON, NEW_LINE});
             continue;
         } else if (ifOrDefaultsKeyword != "if") {
+            std::cout << ifOrDefaultsKeyword << std::endl;
             ErrorHandler::throwError("Expected 'if' after destination in branch.", tokens, masterIndex);
         }
 
@@ -642,6 +649,46 @@ std::shared_ptr<ASTBranch> AST::parseBranch() {
         eatOptionalToken({SEMI_COLON, NEW_LINE});
     }
     return std::make_shared<ASTBranch>(branch);
+}
+
+std::shared_ptr<ASTSwitch> AST::parseSwitch() {
+    eatToken(IDENTIFIER); // Eat switch Token
+    ASTSwitch switchDef;
+    switchDef.type = NodeType::SWITCH;
+    switchDef.variableName = eatToken(IDENTIFIER).value;
+    eatToken(OPEN_BRACKET);
+    blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
+    while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
+        eatOptionalToken({NEW_LINE});
+        auto destination = parseField();
+        // std::string destination = eatToken(IDENTIFIER).value; // Destination
+        std::string ifOrDefaultsKeyword = eatToken(IDENTIFIER).value;
+        if (ifOrDefaultsKeyword == "defaults") {
+            switchDef.destinationDefault = destination;
+            eatOptionalToken({SEMI_COLON, NEW_LINE});
+            continue;
+        } else if (ifOrDefaultsKeyword != "if") {
+            std::cout << ifOrDefaultsKeyword << std::endl;
+            ErrorHandler::throwError("Expected 'if' after destination in branch.", tokens, masterIndex);
+        }
+
+        std::shared_ptr<ASTCondition> condition = std::make_shared<ASTCondition>();
+        if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CONDITION_OPERATOR) {
+            Token conditionalOperator = eatToken(CONDITION_OPERATOR);
+            if (conditionalOperator.value == "==") condition->conditionOperator = ConditionOperators::EQUAL; else
+            if (conditionalOperator.value == "!=") condition->conditionOperator = ConditionOperators::NOT_EQUAL; else
+            if (conditionalOperator.value == ">") condition->conditionOperator = ConditionOperators::GREATER_THAN; else
+            if (conditionalOperator.value == "<") condition->conditionOperator = ConditionOperators::LESS_THAN; else
+            if (conditionalOperator.value == ">=") condition->conditionOperator = ConditionOperators::GREATER_EQUAL_THAN; else
+            if (conditionalOperator.value == "<=") condition->conditionOperator = ConditionOperators::LESS_EQUAL_THAN;
+        } else {
+            condition->conditionOperator = ConditionOperators::EQUAL;
+        }
+        condition->parsedCheckValue = convertTokenValue(eatToken({BOOL_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL}));
+        switchDef.destinationsAndConditions.push_back(std::make_pair(destination, condition));
+        eatOptionalToken({SEMI_COLON, NEW_LINE});
+    }
+    return std::make_shared<ASTSwitch>(switchDef);
 }
 
 
