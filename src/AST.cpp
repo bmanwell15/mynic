@@ -6,7 +6,6 @@ AST::AST(Mynic* myn) {
     masterIndex = 0;
     tokens = {};
     rootNode = std::make_shared<ASTNode>(ASTNode{NodeType::ROOT_NODE, {}});
-    toEndFlagUsed = false;
     primitiveBitSizes = {
         {"bit", 1},
         {"bits", 1},
@@ -48,15 +47,14 @@ AST::AST(Mynic* myn) {
 }
 
 std::shared_ptr<ASTNode> AST::parseTokensToAST(const std::vector<Token>& inputTokens, bool isMainFile) {
-    if (isMainFile) {
-        rootNode->type = NodeType::ROOT_NODE;
-        this->tokens = inputTokens;
-        rootNode = std::make_shared<ASTNode>(ASTNode{NodeType::ROOT_NODE, {}});
-    }
+    if (isMainFile)
+        rootNode = std::make_shared<ASTNode>();
 
-    for (masterIndex = 0; masterIndex < this->tokens.size(); masterIndex++) {
+    rootNode->type = NodeType::ROOT_NODE;
+    this->tokens = inputTokens;
+
+    for (masterIndex = 0; masterIndex < this->tokens.size(); masterIndex++)
         parseField();
-    }
 
     return rootNode;
 }
@@ -260,7 +258,7 @@ std::shared_ptr<ASTField> AST::parseField() {
 std::shared_ptr<ASTPacket> AST::parsePacket() {
     auto packetNode = std::make_shared<ASTPacket>();
     packetNode->type = NodeType::PACKET;
-    packetNode->defaultSettings = nullptr;
+    packetNode->defaultSettings = interpreter->globalSettings;
     bool isLambdaSegment = (eatToken(IDENTIFIER).value == "segment" && currentPacket); // Consumed 'packet'/'segment' token
     currentPacket = &(*packetNode);
     packetNode->name = eatToken(IDENTIFIER).value;
@@ -318,7 +316,6 @@ std::shared_ptr<ASTField> AST::parseTypeDef() {
 }
 
 std::shared_ptr<ASTField> AST::parsePrimitive() {
-    if (toEndFlagUsed) ErrorHandler::throwError("Another field cannot be used after 'TO_END' value is called.", tokens, masterIndex);
     auto field = std::make_shared<ASTPrimitiveValue>();
     field->datatype = eatToken(IDENTIFIER).value;
 
@@ -399,20 +396,29 @@ std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {
         if (settingToken.value == "endianness") {
             Token endianValueToken = eatToken(STRING_LITERAL);
             if (endianValueToken.value == "\"big\"") {
-                settings->endianBig = true;
+                settings->flags.endianBig = true;
             } else if (endianValueToken.value == "\"little\"") {
-                settings->endianBig = false;
+                settings->flags.endianBig = false;
             } else {
                 ErrorHandler::throwError("Invalid endian setting: " + endianValueToken.value, tokens, masterIndex - 1);
             }
         } else if (settingToken.value == "hidden") {
             Token toHide = eatToken(BOOL_LITERAL);
-            settings->isHidden = (toHide.value == "true");
+            settings->flags.isHidden = (toHide.value == "true");
         } else if (settingToken.value == "units") {
             Token unitVal = eatToken(STRING_LITERAL);
             settings->units = removeQuotes(unitVal.value);
         } else if (settingToken.value == "expr") {
             settings->exprASTTree = parseExpression();
+        } else if (settingToken.value == "includePacketName") {
+            Token includePN = eatToken(BOOL_LITERAL);
+            settings->flags.includePacketName = (includePN.value == "true");
+        } else if (settingToken.value == "includeRawBytes") {
+            Token include = eatToken(BOOL_LITERAL);
+            settings->flags.includeRawBytes = (include.value == "true");
+        } else if (settingToken.value == "includeTimestamp") {
+            Token include = eatToken(BOOL_LITERAL);
+            settings->flags.includeTimestamp = (include.value == "true");
         } else {
             ErrorHandler::throwError("Unknown primitive setting: " + settingToken.value, tokens, masterIndex - 1);
         }
@@ -426,12 +432,12 @@ std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {
 }
 
 std::shared_ptr<ASTField> AST::parseImport() {
-    eatToken(IDENTIFIER);
+    eatToken(IDENTIFIER); // import token
     Token fileName = eatToken(STRING_LITERAL);
-    std::string str = removeQuotes(fileName.value);
+    std::string filePath = removeQuotes(fileName.value);
     std::shared_ptr<std::vector<Token>> mainFileTokens = std::make_shared<std::vector<Token>>(tokens);
     size_t mainMasterIndex = masterIndex;
-    mynic->loadFile(str);
+    mynic->loadFile(filePath);
     tokens = *mainFileTokens;
     masterIndex = mainMasterIndex;
     return std::make_shared<ASTField>(ASTField{});
@@ -491,6 +497,7 @@ std::shared_ptr<ASTEnum> AST::parseEnum() {
     ASTEnum enumVar;
     eatToken(IDENTIFIER); // Parse enum token
     enumVar.datatype = eatToken(IDENTIFIER).value;
+    enumVar.type = NodeType::ENUM;
 
     if (enumVar.datatype.substr(0, 4) != "uint")
         ErrorHandler::throwError("Enums must have an uint type, got " + enumVar.datatype + " instead.", tokens, masterIndex);
@@ -562,7 +569,7 @@ std::shared_ptr<ASTBitfield> AST::parseBitfield() {
 
     if (bitSizeOfField % 8 != 0) { // If the bitfield does not end on a byte, add a hidden field to make it
         auto primitiveSettings = std::make_shared<ASTPrimitiveValueSettings>();
-        primitiveSettings->isHidden = true;
+        primitiveSettings->flags.isHidden = true;
         auto remainderField = std::make_shared<ASTPrimitiveValue>();
         remainderField->datatype = "bits";
         remainderField->name = "_remainder";
@@ -660,7 +667,17 @@ std::shared_ptr<ASTSwitch> AST::parseSwitch() {
     blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
     while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
         eatOptionalToken({NEW_LINE});
-        auto destination = parseField();
+        std::shared_ptr<ASTField> destination;
+        Token nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+        if (isKnownType(nextToken.value)) {
+            auto primitiveValueCall = std::make_shared<ASTPrimitiveValue>();
+            primitiveValueCall->type = NodeType::PRIMITIVE;
+            primitiveValueCall->datatype = eatToken(IDENTIFIER).value;
+            primitiveValueCall->name = primitiveValueCall->datatype;
+            destination = primitiveValueCall;
+        } else {
+           destination = parseField(); // parsing lambda segment
+        }
         // std::string destination = eatToken(IDENTIFIER).value; // Destination
         std::string ifOrDefaultsKeyword = eatToken(IDENTIFIER).value;
         if (ifOrDefaultsKeyword == "defaults") {
@@ -711,7 +728,6 @@ std::shared_ptr<ASTExpression> AST::parseFactor() {
     if (token.type == IDENTIFIER) {
         auto variableCall = std::make_shared<ASTExpressionVariable>();
         variableCall->variableName = token.value;
-        if (variableCall->variableName == "TO_END") toEndFlagUsed = true;
         if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == PERIOD) { // if variable takes the form (enum.attribute)
             variableCall->variableName += eatToken(PERIOD).value;
             variableCall->variableName += eatToken(IDENTIFIER).value;

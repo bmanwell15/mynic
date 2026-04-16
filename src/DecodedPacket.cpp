@@ -3,12 +3,23 @@
 std::string DecodedPacket::toJson() const {
     std::stringstream ss;
     ss << "{\n";
-    ss << "   \"Packet Name\": \"" << packetName << "\",\n";
-    ss << "   \"Raw Bytes\": \"";
-    for (const auto& byte : rawBytes) {
-        ss << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(byte);
+    if (rootField->settings->flags.includePacketName)
+        ss << "   \"Packet Name\": \"" << packetName << "\",\n";
+
+    if (rootField->settings->flags.includeRawBytes) {
+        ss << "   \"Raw Bytes\": \"";
+        for (const auto& byte : rawBytes) {
+            ss << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(byte);
+        }
+        ss << std::dec << "\",\n";
     }
-    ss << std::dec << "\",\n";
+    
+    if (rootField->settings->flags.includeTimestamp) {
+        auto now = std::chrono::system_clock::now();
+        auto now_ms = std::chrono::floor<std::chrono::milliseconds>(now);
+        std::string timestamp = std::format("{:%F %T}", now_ms); // %F = YYYY-MM-DD, %T = HH:MM:SS.mmm
+        ss << "   \"Timestamp\": \"" << timestamp << "\",\n";
+    }
     toJson(ss, rootField, 1);
     ss << '}';
     return ss.str();
@@ -65,7 +76,7 @@ void DecodedPacket::toJson(std::stringstream& ss, const std::shared_ptr<Interpre
         ss << indentStr << "}\n";
     } else if (field->type == NodeType::PRIMITIVE) {
         auto primField = std::static_pointer_cast<InterpretedPrimitiveValue>(field);
-        if (primField->settings && primField->settings->isHidden) return;
+        if (primField->settings && primField->settings->flags.isHidden) return;
         ss << indentStr << "\"" << primField->name << "\": ";
         if (primField->settings && primField->settings->units != "") ss << '\"';
         printPrimitive(ss, primField);

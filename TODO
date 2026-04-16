@@ -101,6 +101,7 @@ Loading Mynic File
         SEGMENT3 defaults;
     }
 }
+
 TODO:
 -------------------------------
 - Repeat fields:
@@ -117,21 +118,10 @@ TODO:
         while (currentByte != 0x00) { ... }
         // break, continue keywords?
     }
-- Binary operators in values? -> May not be needed simply because of the nature of bitfields
-- In file byte processing:
-    {
-        interpret 656ED7 as PacketName
-        ("004FE3", "PacketName")
-    }
 - File output assigning in default block:
     {
         packet dPacket {
             default {
-                includeTimestamp: true,
-                includeRawBytes: true,
-                includePacketName: true,
-                printInSchema: true, // will not print in printSchema() function in the Mynic class
-
                 // May not include file handling in API, might leave that to the end user
                 saveToFile: false,
                 destinationFolder: "./folder/path" // irrelevant if saveToFile == false;
@@ -161,6 +151,8 @@ TODO:
     string fixedLengthStr[10]; // Will gather 10 bytes of chars
     char oneChar;
 }
+- Remove case sensitivity
+- Add 0b binary literal
 
 - STD Mynic files for popular protocols
     Core Internet: TCP, UDP, IP, ICMP, ARP

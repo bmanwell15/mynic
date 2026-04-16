@@ -19,7 +19,7 @@ bool Mynic::loadFile(std::string& filename) {
     // }
 
     if (rootNode) {
-        std::shared_ptr<ASTNode> importedRootNode = ast.parseTokensToAST(tokens);
+        std::shared_ptr<ASTNode> importedRootNode = ast.parseTokensToAST(tokens, false);
         for (const auto& [name, property] : importedRootNode->properties) {
             rootNode->properties[name] = property;
         }
@@ -106,7 +106,7 @@ void Mynic::printSegment(const std::string& segmentName) {
 
 void Mynic::printSchema() {
     for (const auto& [name, packet] : rootNode->properties) {
-        if (packet->type == NodeType::PACKET) {
+        if (packet && packet->type == NodeType::PACKET) {
             printPacket(name);
             std::cout << std::endl;
         }
@@ -128,7 +128,11 @@ DecodedPacket Mynic::decodePacket(const std::string& strBytes, const std::string
 }
 
 DecodedPacket Mynic::decodePacket(const std::vector<uint8_t>& dataBytes, const std::string& packetName) {
+    auto startTime = std::chrono::high_resolution_clock::now();
     DecodedPacket decoded = interpreter.interpretBytes(dataBytes, packetName, rootNode);
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    std::cout << "Interpreted Packet in " << duration << " ms\n" << std::endl;
     return decoded;
 }
 

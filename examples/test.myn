@@ -41,14 +41,14 @@ segment SEGMENT_DEFAULT {
 }
 
 packet BasicPacket {
-    // default {
-    //     units: "px"
-    // }
+    //default {
+    //    includePacketName: false
+    //}
 
     // uint16 field {endianness: "little"};
     // bool t {hidden: false}
     //EnumName eTest;
-    // int8 num {units: "m/s", endianness: "little"} // Test comment
+    int8 num {units: "m/s", endianness: "little"} // Test comment
     // byte_t aliasField;
 
     //bitfield TestBits {
@@ -138,17 +138,17 @@ packet BasicPacket {
     //    } defaults;
     //}
 
-    uint8 check;
-    switch check {
-        segment SEGMENT {
-            uint8 asNum;
-        } if 1;
-        segment SEGMENT {
-            byte asByte;
-        } if 2;
-        segment SEGMENT {
-            bool asBool;
-        } defaults;
-    }
+    //uint8 check;
+    //switch check {
+    //    segment SEGMENT {
+    //        uint8 asNum;
+    //    } if 1;
+    //    segment SEGMENT {
+    //        byte asByte;
+    //    } if 2;
+    //    segment SEGMENT {
+    //        bool asBool;
+    //   } defaults;
+    //}
 };
 

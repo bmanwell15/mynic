@@ -74,10 +74,22 @@ struct ASTExpressionBinaryOperation : public ASTExpression {
 };
 
 struct ASTPrimitiveValueSettings {
-    bool endianBig = true;
-    bool isHidden = false;
     std::string units = "";
     std::shared_ptr<ASTExpression> exprASTTree;
+    struct Flags {
+        bool endianBig : 1;
+        bool isHidden : 1;
+        bool includeTimestamp : 1;
+        bool includeRawBytes : 1;
+        bool includePacketName : 1;
+        Flags() : 
+            endianBig(true), 
+            isHidden(false), 
+            includeTimestamp(true), 
+            includeRawBytes(true), 
+            includePacketName(true) {}
+    };
+    Flags flags;
 };
 
 struct ASTPrimitiveValue : public ASTField {
@@ -175,7 +187,6 @@ class AST {
         std::shared_ptr<ASTNode> rootNode;
         Mynic* mynic;
         ASTPacket* currentPacket;
-        bool toEndFlagUsed;
 
         bool isKnownType(const std::string& type);
 

@@ -4,7 +4,7 @@ Interpreter::Interpreter() {
     defTypeAliases = {};
     decodedPacket = nullptr;
     astTree = nullptr;
-    globalSettings = std::make_shared<ASTPrimitiveValueSettings>(ASTPrimitiveValueSettings{});
+    globalSettings = std::make_shared<ASTPrimitiveValueSettings>();
 }
 
 DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes, const std::string& packetName, const std::shared_ptr<ASTNode>& rootNode) {
@@ -20,6 +20,7 @@ DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes,
             auto packet = std::static_pointer_cast<ASTPacket>(field);
             decodedPacket->rootField = std::make_shared<InterpretedPacket>();
             decodedPacket->rootField = interpretPacket(*packet, bitQueue, decodedPacket->rootField);
+            decodedPacket->rootField->settings = packet->defaultSettings;
             decodedPacket->rootField->name = packet->name;
             decodedPacket->rootField->type = NodeType::PACKET;
             return *decodedPacket;
@@ -255,7 +256,7 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
     else
         datatype = field.datatype;
     
-    bits = enforceEndian(bits, field.sizeInBits, field.settings && field.settings->endianBig == false);
+    bits = enforceEndian(bits, field.sizeInBits, field.settings && field.settings->flags.endianBig == false);
 
     for (const auto& enumDef : enums) {
         if (datatype == enumDef->name) {

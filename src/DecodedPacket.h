@@ -8,6 +8,7 @@
 #include <memory>
 #include <iostream>
 #include <iomanip>
+#include <chrono>
 
 #include "AST.h"
 
@@ -20,6 +21,7 @@ struct InterpretedField {
 
 struct InterpretedPacket : public InterpretedField {
     std::vector<std::shared_ptr<InterpretedField>> fields;
+    std::shared_ptr<ASTPrimitiveValueSettings> settings;
 };
 
 struct InterpretedPrimitiveValue : public InterpretedField {
