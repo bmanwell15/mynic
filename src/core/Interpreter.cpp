@@ -13,7 +13,9 @@ DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes,
     decodedPacket->rawBytes = dataBytes;
     decodedPacket->packetName = packetName;
 
+    std::cout << dataBytes.size() << std::endl;
     BitQueue bitQueue(dataBytes);
+    std::cout << bitQueue.size() << std::endl;
 
     for (const auto& [name, field] : rootNode->properties) {
         if (field && field->type == NodeType::PACKET && name == packetName) { // Found the packet definition in the AST
@@ -248,6 +250,7 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
 }
 
 Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) {
+    std::cout << field.sizeInBits << " | " << bitQueue.size() << std::endl;
     uint64_t bits = bitQueue.pop(field.sizeInBits);
     std::string datatype;
 
@@ -591,7 +594,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         if (branchDef->destinationDefault) {
             return interpretField(branchDef->destinationDefault, bitQueue, rootNode);
         }
-    }  else if (field->type == NodeType::SWITCH) {
+    } else if (field->type == NodeType::SWITCH) {
         auto switchDef = std::static_pointer_cast<ASTSwitch>(field);
         auto variableValOpt = getParsedValue(rootNode, switchDef->variableName, bitQueue);
         if (!variableValOpt.has_value())

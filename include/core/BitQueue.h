@@ -38,10 +38,11 @@
  */
 class BitQueue {
 public:
-    BitQueue() = default;
+    BitQueue() : bitPos_(0) {}
     explicit BitQueue(std::vector<uint8_t> data)
         : owned_(std::move(data)),
-          data_(owned_) {}
+          data_(owned_),
+          bitPos_(0) {}
 
     bool empty() const {
         return bitPos_ >= data_.size() * 8;
