@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC  -O0 -g -shared -Wl,-soname,libmynic_adapters.so -o libmynic_adapters.so CMakeFiles/mynic_adapters.dir/CMakeFiles/3.28.3/CompilerIdCXX/CMakeCXXCompilerId.cpp.o CMakeFiles/mynic_adapters.dir/json.cpp.o 

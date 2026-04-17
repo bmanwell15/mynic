@@ -6,7 +6,7 @@
 
 */
 
-import "./examples/imported.myn";
+//import "./examples/imported.myn";
 
 
 enum uint8 EnumName {
@@ -48,7 +48,7 @@ packet BasicPacket {
     // uint16 field {endianness: "little"};
     // bool t {hidden: false}
     //EnumName eTest;
-    int8 num {units: "m/s", endianness: "little"} // Test comment
+    //int8 num {units: "m/s", endianness: "little"} // Test comment
     // byte_t aliasField;
 
     //bitfield TestBits {
@@ -151,4 +151,3 @@ packet BasicPacket {
     //   } defaults;
     //}
 };
-

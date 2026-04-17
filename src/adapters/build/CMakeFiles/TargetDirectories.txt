@@ -1,0 +1,3 @@
+/home/bmanwell/OneDrive/Programming/C++/mynic/src/adapters/build/CMakeFiles/mynic_adapters.dir
+/home/bmanwell/OneDrive/Programming/C++/mynic/src/adapters/build/CMakeFiles/edit_cache.dir
+/home/bmanwell/OneDrive/Programming/C++/mynic/src/adapters/build/CMakeFiles/rebuild_cache.dir

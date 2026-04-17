@@ -153,6 +153,7 @@ TODO:
 }
 - Remove case sensitivity
 - Add 0b binary literal
+- Add csv support for outputs
 
 - STD Mynic files for popular protocols
     Core Internet: TCP, UDP, IP, ICMP, ARP

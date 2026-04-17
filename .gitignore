@@ -46,4 +46,4 @@ src/build
 
 # Executable
 *.exe
-mynic
+dist/*
