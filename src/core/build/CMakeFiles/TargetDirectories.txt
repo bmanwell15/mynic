@@ -1,3 +1,0 @@
-/home/bmanwell/OneDrive/Programming/C++/mynic/src/core/build/CMakeFiles/mynic.dir
-/home/bmanwell/OneDrive/Programming/C++/mynic/src/core/build/CMakeFiles/edit_cache.dir
-/home/bmanwell/OneDrive/Programming/C++/mynic/src/core/build/CMakeFiles/rebuild_cache.dir

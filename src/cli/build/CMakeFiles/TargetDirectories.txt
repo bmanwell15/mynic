@@ -1,7 +1,0 @@
-/home/bmanwell/OneDrive/Programming/C++/mynic/src/cli/build/CMakeFiles/mynic_cli.dir
-/home/bmanwell/OneDrive/Programming/C++/mynic/src/cli/build/CMakeFiles/edit_cache.dir
-/home/bmanwell/OneDrive/Programming/C++/mynic/src/cli/build/CMakeFiles/rebuild_cache.dir
-/home/bmanwell/OneDrive/Programming/C++/mynic/src/cli/build/CMakeFiles/list_install_components.dir
-/home/bmanwell/OneDrive/Programming/C++/mynic/src/cli/build/CMakeFiles/install.dir
-/home/bmanwell/OneDrive/Programming/C++/mynic/src/cli/build/CMakeFiles/install/local.dir
-/home/bmanwell/OneDrive/Programming/C++/mynic/src/cli/build/CMakeFiles/install/strip.dir

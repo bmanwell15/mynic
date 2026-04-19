@@ -1,1 +1,0 @@
-/usr/bin/c++  -O0 -g CMakeFiles/mynic_cli.dir/main.cpp.o -o mynic_cli  -Wl,-rpath,/home/bmanwell/OneDrive/Programming/C++/mynic/src/cli: /home/bmanwell/OneDrive/Programming/C++/mynic/src/cli/libmynic.so /home/bmanwell/OneDrive/Programming/C++/mynic/src/cli/libmynic_adapters.so 

@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC  -O0 -g -shared -Wl,-soname,libmynic.so -o libmynic.so CMakeFiles/mynic.dir/AST.cpp.o CMakeFiles/mynic.dir/DecodedPacket.cpp.o CMakeFiles/mynic.dir/ErrorHandler.cpp.o CMakeFiles/mynic.dir/Interpreter.cpp.o CMakeFiles/mynic.dir/Mynic.cpp.o CMakeFiles/mynic.dir/CMakeFiles/3.28.3/CompilerIdCXX/CMakeCXXCompilerId.cpp.o CMakeFiles/mynic.dir/lexer.cpp.o 
