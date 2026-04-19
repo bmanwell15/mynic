@@ -13,9 +13,11 @@ DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes,
     decodedPacket->rawBytes = dataBytes;
     decodedPacket->packetName = packetName;
 
-    std::cout << dataBytes.size() << std::endl;
+    auto now = std::chrono::system_clock::now();
+    auto now_ms = std::chrono::floor<std::chrono::milliseconds>(now);
+    decodedPacket->timestamp = std::format("{:%F %T}", now_ms); // %F = YYYY-MM-DD, %T = HH:MM:SS.mmm
+
     BitQueue bitQueue(dataBytes);
-    std::cout << bitQueue.size() << std::endl;
 
     for (const auto& [name, field] : rootNode->properties) {
         if (field && field->type == NodeType::PACKET && name == packetName) { // Found the packet definition in the AST
@@ -250,7 +252,6 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
 }
 
 Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) {
-    std::cout << field.sizeInBits << " | " << bitQueue.size() << std::endl;
     uint64_t bits = bitQueue.pop(field.sizeInBits);
     std::string datatype;
 

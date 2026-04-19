@@ -10,7 +10,6 @@
 #include "lexer.h"
 #include "AST.h"
 #include "Interpreter.h"
-#include "DecodedPacket.h"
 
 #define PRINT_INDENT_SIZE 3
 

@@ -44,8 +44,7 @@ int main(int argc, char* argv[]) {
         if (inputLine == "exit" || inputLine == "quit") break;
 
         DecodedPacket result = decoder.decodePacket(inputLine, PACKET_NAME);
-
-        result.print();
+        std::cout << adapters::json::encode(result) << std::endl;
     }
     std::cout << "bye\n";
     return 0;

@@ -14,15 +14,53 @@
 #include <iomanip>
 #include <sstream>
 
-#include "DecodedPacket.h"
 #include "ErrorHandler.h"
 #include "BitQueue.h"
+#include "AST.h"
 
 #define NS_PER_SECOND       1'000'000'000LL
 #define NS_PER_MILLISECOND  1'000'000LL
 #define NS_PER_MICROSECOND  1'000LL
 
 class AST; // Forward declaration
+
+struct InterpretedField {
+    std::string name;
+    size_t sizeInBits;
+    NodeType type;
+};
+
+struct InterpretedPacket : public InterpretedField {
+    std::vector<std::shared_ptr<InterpretedField>> fields;
+    std::shared_ptr<ASTPrimitiveValueSettings> settings;
+};
+
+struct InterpretedPrimitiveValue : public InterpretedField {
+    Value value;
+    std::shared_ptr<ASTPrimitiveValueSettings> settings;
+    std::string datatype;
+};
+
+struct InterpretedBitfield : public InterpretedField {
+    std::string name;
+    std::vector<std::shared_ptr<InterpretedField>> subfields;
+};
+
+struct InterpretedUnionfield : public InterpretedField {
+    std::string name;
+    std::vector<std::shared_ptr<InterpretedField>> subfields;
+};
+
+struct InterpretedArray : public InterpretedField {
+    std::vector<std::shared_ptr<InterpretedField>> list;
+};
+
+struct DecodedPacket {
+    std::string packetName;
+    std::vector<uint8_t> rawBytes;
+    std::shared_ptr<InterpretedPacket> rootField;
+    std::string timestamp;
+};
 
 class Interpreter {
     public:

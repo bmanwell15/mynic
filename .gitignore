@@ -42,8 +42,9 @@
 
 # Build files
 *.cmake
-src/build
 
-# Executable
-*.exe
 dist/*
+Makefile
+src/adapters/build
+src/core/build
+src/cli/build
