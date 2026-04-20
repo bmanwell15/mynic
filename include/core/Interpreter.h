@@ -17,6 +17,7 @@
 #include "ErrorHandler.h"
 #include "BitQueue.h"
 #include "AST.h"
+#include "MynicLib.h"
 
 #define NS_PER_SECOND       1'000'000'000LL
 #define NS_PER_MILLISECOND  1'000'000LL
@@ -72,6 +73,7 @@ class Interpreter {
 
         DecodedPacket interpretBytes(const std::vector<uint8_t>& dataBytes, const std::string& packetName, const  std::shared_ptr<ASTNode>& rootNode);
         std::optional<Value> tryEvaluateASTExpression(std::shared_ptr<ASTExpression> node);
+        Value evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
     
     private:
         std::shared_ptr<DecodedPacket> decodedPacket;
@@ -83,7 +85,7 @@ class Interpreter {
         Value interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue);
         std::optional<Value> getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName, BitQueue& bitQueue);
         void enforcePostInterpretationSettings(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
-        Value evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
+        Value evaluateASTFunctionCall(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
 };
 
 #endif

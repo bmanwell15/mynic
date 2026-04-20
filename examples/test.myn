@@ -150,5 +150,6 @@ packet BasicPacket {
     //        bool asBool;
     //   } defaults;
     //}
-    byte b;
+
+    byte arr[Math.PI()];
 };

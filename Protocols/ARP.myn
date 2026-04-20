@@ -1,0 +1,21 @@
+
+enum uint16 ARP_HARDWARE_TYPES {
+    ETHERNET = 1
+}
+
+enum uint16 ARP_OPERATIONS {
+    REQUEST = 1,
+    REPLY
+}
+
+packet ARP_PACKET {
+    ARP_HARDWARE_TYPES hardwareType;
+    bytes2 protocolType;
+    uint8 hardwareLength;
+    uint8 protocolLength;
+    ARP_OPERATIONS operation;
+    bytes6 senderHardwareAddress;
+    ipv4Address senderProtocolAddress;
+    bytes6 targetHardwareAddress;
+    ipv4Address targetProtocolAddress;
+}

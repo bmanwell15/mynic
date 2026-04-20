@@ -635,7 +635,6 @@ std::shared_ptr<ASTBranch> AST::parseBranch() {
             eatOptionalToken({SEMI_COLON, NEW_LINE});
             continue;
         } else if (ifOrDefaultsKeyword != "if") {
-            std::cout << ifOrDefaultsKeyword << std::endl;
             ErrorHandler::throwError("Expected 'if' after destination in branch.", tokens, masterIndex);
         }
 
@@ -685,7 +684,6 @@ std::shared_ptr<ASTSwitch> AST::parseSwitch() {
             eatOptionalToken({SEMI_COLON, NEW_LINE});
             continue;
         } else if (ifOrDefaultsKeyword != "if") {
-            std::cout << ifOrDefaultsKeyword << std::endl;
             ErrorHandler::throwError("Expected 'if' after destination in branch.", tokens, masterIndex);
         }
 
@@ -725,7 +723,19 @@ std::shared_ptr<ASTExpression> AST::parseFactor() {
         return doubleLiteral;
     }
 
-    if (token.type == IDENTIFIER) {
+    if (token.type == IDENTIFIER && // If class.func()
+        tokens[masterIndex].type == PERIOD &&
+        tokens[masterIndex + 1].type == IDENTIFIER &&
+        tokens[masterIndex + 2].type == OPEN_PAREN
+    ) {
+        return parseFunctionCall(true, token);
+    }
+
+    if (token.type == IDENTIFIER && MYNIC_FUNCTIONS.contains(token.value)) { // if funcCall()
+        return parseFunctionCall(false, token);
+    }
+
+    if (token.type == IDENTIFIER) { // If variable call
         auto variableCall = std::make_shared<ASTExpressionVariable>();
         variableCall->variableName = token.value;
         if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == PERIOD) { // if variable takes the form (enum.attribute)
@@ -779,4 +789,25 @@ std::shared_ptr<ASTExpression> AST::parseExpression() {
         nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
     }
     return node;
+}
+
+std::shared_ptr<ASTExpression> AST::parseFunctionCall(bool hasClassName, Token token) {
+    auto functionCall = std::make_shared<ASTFunctionCall>();
+    functionCall->className = hasClassName ? token.value : "std";
+    if (hasClassName) eatToken(PERIOD);
+    functionCall->funcName = hasClassName ? eatToken(IDENTIFIER).value : token.value;
+    eatToken(OPEN_PAREN);
+    size_t paramIndex = 0;
+    Token nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+    while (paramIndex || nextToken.type != CLOSE_PAREN) {
+        if (nextToken.type == OPEN_PAREN) {paramIndex++; eatToken(OPEN_PAREN);}
+        if (nextToken.type == CLOSE_PAREN) {paramIndex--; continue;}
+
+        functionCall->parameters.push_back(parseExpression());
+        eatOptionalToken({COMMA}); // Optional token eat because last param will not have a comma
+
+        nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+    }
+    eatOptionalToken({CLOSE_PAREN});
+    return functionCall;
 }

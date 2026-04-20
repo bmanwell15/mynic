@@ -433,12 +433,33 @@ Value evaluateBinaryOp(std::string op, Value left, Value right) {
     }, left, right);
 }
 
+Value Interpreter::evaluateASTFunctionCall(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
+    if (functionCall->className == "Math") {
+        if (functionCall->funcName == "max") return MynicLib::mathMax(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "min") return MynicLib::mathMin(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "pow") return MynicLib::mathPow(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "sqrt") return MynicLib::mathSqrt(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "log") return MynicLib::mathLog(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "log10") return MynicLib::mathLog(interpretedPrimitive, functionCall, bitQueue, rootNode, this, 10);
+        if (functionCall->funcName == "log2") return MynicLib::mathLog(interpretedPrimitive, functionCall, bitQueue, rootNode, this, 2);
+        if (functionCall->funcName == "round") return MynicLib::mathRound(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "sign") return MynicLib::mathSign(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "abs") return MynicLib::mathAbs(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "PI") return MynicLib::mathPi();
+        if (functionCall->funcName == "E") return MynicLib::mathE();
+    }
+    throw std::runtime_error("Function call not found.");
+}
+
 Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
     if (auto n = std::dynamic_pointer_cast<ASTExpressionInt>(node)) {
         return n->value;
     }
     if (auto n = std::dynamic_pointer_cast<ASTExpressionDouble>(node)) {
         return n->value;
+    }
+    if (auto n = std::dynamic_pointer_cast<ASTFunctionCall>(node)) {
+        return evaluateASTFunctionCall(interpretedPrimitive, n, bitQueue, rootNode);
     }
     if (auto n = std::dynamic_pointer_cast<ASTExpressionVariable>(node)) {
         if (interpretedPrimitive && n->variableName == interpretedPrimitive->name) 
@@ -448,13 +469,12 @@ Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveVal
             return ast->definedVariables[n->variableName];
         
         auto possibleVariableCallValue = getParsedValue(rootNode, n->variableName, bitQueue);
-        if (!possibleVariableCallValue.has_value()) throw std::runtime_error("Var'" + n->variableName + "' not found in expr.");
+        if (!possibleVariableCallValue.has_value()) throw std::runtime_error("Var '" + n->variableName + "' not found in expr.");
         return possibleVariableCallValue.value();
     }
     if (auto b = std::dynamic_pointer_cast<ASTExpressionBinaryOperation>(node)) {
         Value leftVal = evaluateASTExpression(interpretedPrimitive, b->left, bitQueue, rootNode);
         Value rightVal = evaluateASTExpression(interpretedPrimitive, b->right, bitQueue, rootNode);
-
         return evaluateBinaryOp(b->op, leftVal, rightVal);
     }
     return 0;

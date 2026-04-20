@@ -73,6 +73,12 @@ struct ASTExpressionBinaryOperation : public ASTExpression {
     std::shared_ptr<ASTExpression> right;
 };
 
+struct ASTFunctionCall : public ASTExpression {
+    std::string className;
+    std::string funcName;
+    std::vector<std::shared_ptr<ASTExpression>> parameters;
+};
+
 struct ASTPrimitiveValueSettings {
     std::string units = "";
     std::shared_ptr<ASTExpression> exprASTTree;
@@ -177,6 +183,7 @@ class AST {
         std::unordered_map<std::string, size_t> primitiveBitSizes;
         std::unordered_map<std::string, Value> definedVariables; // <varName, varValue> Stored in AST because AST will replace variables with Values during compilation
         inline static const std::unordered_set<std::string> MYNIC_KEYWORDS = {"TO_END"};
+        inline static const std::unordered_set<std::string> MYNIC_FUNCTIONS = {"TERMINATE_IF"};
 
         std::shared_ptr<ASTNode> parseTokensToAST(const std::vector<Token>& inputTokens, bool isMainFile=true);
         size_t getStructureSize(std::shared_ptr<ASTField> field);
@@ -215,6 +222,7 @@ class AST {
         std::shared_ptr<ASTExpression> parseFactor();
         std::shared_ptr<ASTExpression> parseTerm();
         std::shared_ptr<ASTExpression> parseExpression();
+        std::shared_ptr<ASTExpression> parseFunctionCall(bool hasClassName, Token token);
 };
 
 #endif

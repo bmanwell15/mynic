@@ -13,6 +13,7 @@ add_executable(mynic_cli
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/ErrorHandler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/Interpreter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/lexer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/MynicLib.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../adapters/json.cpp
 )
