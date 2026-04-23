@@ -195,6 +195,10 @@ std::shared_ptr<ASTField> AST::parseField() {
     if (token.type == IDENTIFIER && MYNIC_KEYWORDS.contains(token.value)) {
 
     }
+
+    if (token.type == IDENTIFIER && tokens[masterIndex + 1].type == OPEN_PAREN) {
+        return parseVoidFunctionCall();
+    }
     
     if (token.type == IDENTIFIER && token.value == "packet") {
         std::shared_ptr<ASTPacket> packet = parsePacket();
@@ -343,7 +347,7 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
         auto arr = std::make_shared<ASTArray>();
         arr->elementSchema = field;
         arr->type = NodeType::ARRAY;
-        arr->dynamicLength = parseExpression();
+        arr->dynamicLength = parseLogicalOr();
         auto tryEval = interpreter->tryEvaluateASTExpression(arr->dynamicLength);
         if (tryEval.has_value()) {
             if (std::holds_alternative<uint64_t>(tryEval.value())) {
@@ -409,7 +413,7 @@ std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {
             Token unitVal = eatToken(STRING_LITERAL);
             settings->units = removeQuotes(unitVal.value);
         } else if (settingToken.value == "expr") {
-            settings->exprASTTree = parseExpression();
+            settings->exprASTTree = parseLogicalOr();
         } else if (settingToken.value == "includePacketName") {
             Token includePN = eatToken(BOOL_LITERAL);
             settings->flags.includePacketName = (includePN.value == "true");
@@ -523,7 +527,7 @@ std::shared_ptr<ASTEnum> AST::parseEnum() {
 std::shared_ptr<ASTField> AST::parseDefine() {
     eatToken(IDENTIFIER); // Eat define token
     std::string varName = eatToken(IDENTIFIER).value;
-    auto varExpression = parseExpression();
+    auto varExpression = parseLogicalOr();
     auto varValueOption = interpreter->tryEvaluateASTExpression(varExpression);
     if (varValueOption.has_value()) {
         definedVariables[varName] = varValueOption.value();
@@ -638,7 +642,7 @@ std::shared_ptr<ASTBranch> AST::parseBranch() {
             ErrorHandler::throwError("Expected 'if' after destination in branch.", tokens, masterIndex);
         }
 
-        std::shared_ptr<ASTCondition> condition = std::make_shared<ASTCondition>();
+        std::shared_ptr<ASTParsingCondition> condition = std::make_shared<ASTParsingCondition>();
         if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CONDITION_OPERATOR) {
             Token conditionalOperator = eatToken(CONDITION_OPERATOR);
             if (conditionalOperator.value == "==") condition->conditionOperator = ConditionOperators::EQUAL; else
@@ -687,7 +691,7 @@ std::shared_ptr<ASTSwitch> AST::parseSwitch() {
             ErrorHandler::throwError("Expected 'if' after destination in branch.", tokens, masterIndex);
         }
 
-        std::shared_ptr<ASTCondition> condition = std::make_shared<ASTCondition>();
+        std::shared_ptr<ASTParsingCondition> condition = std::make_shared<ASTParsingCondition>();
         if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CONDITION_OPERATOR) {
             Token conditionalOperator = eatToken(CONDITION_OPERATOR);
             if (conditionalOperator.value == "==") condition->conditionOperator = ConditionOperators::EQUAL; else
@@ -709,7 +713,12 @@ std::shared_ptr<ASTSwitch> AST::parseSwitch() {
 
 // 1. Factors: Numbers, Variables, or ( Expressions )
 std::shared_ptr<ASTExpression> AST::parseFactor() {
-    Token token = eatToken({INT_LITERAL, DOUBLE_LITERAL, OPEN_PAREN, IDENTIFIER});
+    Token token = eatToken({BOOL_LITERAL, INT_LITERAL, DOUBLE_LITERAL, OPEN_PAREN, IDENTIFIER});
+    if (token.type == BOOL_LITERAL) {
+        auto intLiteral = std::make_shared<ASTExpressionInt>();
+        intLiteral->value = token.value == "true" ? 1 : 0;
+        return intLiteral;
+    }
 
     if (token.type == INT_LITERAL) {
         auto intLiteral = std::make_shared<ASTExpressionInt>();
@@ -792,7 +801,7 @@ std::shared_ptr<ASTExpression> AST::parseExpression() {
 }
 
 std::shared_ptr<ASTExpression> AST::parseFunctionCall(bool hasClassName, Token token) {
-    auto functionCall = std::make_shared<ASTFunctionCall>();
+    auto functionCall = std::make_shared<ASTExpressionFunctionCall>();
     functionCall->className = hasClassName ? token.value : "std";
     if (hasClassName) eatToken(PERIOD);
     functionCall->funcName = hasClassName ? eatToken(IDENTIFIER).value : token.value;
@@ -803,7 +812,78 @@ std::shared_ptr<ASTExpression> AST::parseFunctionCall(bool hasClassName, Token t
         if (nextToken.type == OPEN_PAREN) {paramIndex++; eatToken(OPEN_PAREN);}
         if (nextToken.type == CLOSE_PAREN) {paramIndex--; continue;}
 
-        functionCall->parameters.push_back(parseExpression());
+        functionCall->parameters.push_back(parseLogicalOr());
+        eatOptionalToken({COMMA}); // Optional token eat because last param will not have a comma
+
+        nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+    }
+    eatOptionalToken({CLOSE_PAREN});
+    return functionCall;
+}
+
+std::shared_ptr<ASTExpression> AST::parseComparison() {
+    auto node = parseExpression(); // Start with Arithmetic
+
+    Token nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+    // Check for comparison operators
+    while (nextToken.type == CONDITION_OPERATOR) { 
+        std::string op = eatToken(CONDITION_OPERATOR).value;
+        auto right = parseExpression();
+        
+        auto condNode = std::make_shared<ASTCondition>();
+        condNode->op = op;
+        condNode->left = node;
+        condNode->right = right;
+        node = condNode;
+        nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+    }
+    return node;
+}
+
+std::shared_ptr<ASTExpression> AST::parseLogicalAnd() {
+    auto node = parseComparison();
+
+    while (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).value == "&&") {
+        std::string op = eatToken(LOGIC_GATE).value;
+        auto right = parseComparison();
+        
+        auto logicNode = std::make_shared<ASTCondition>();
+        logicNode->op = op;
+        logicNode->left = node;
+        logicNode->right = right;
+        node = logicNode;
+    }
+    return node;
+}
+
+// Logical OR (||)
+std::shared_ptr<ASTExpression> AST::parseLogicalOr() {
+    auto node = parseLogicalAnd();
+
+    while (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).value == "||") {
+        std::string op = eatToken(LOGIC_GATE).value;
+        auto right = parseLogicalAnd();
+        
+        auto logicNode = std::make_shared<ASTCondition>();
+        logicNode->op = op;
+        logicNode->left = node;
+        logicNode->right = right;
+        node = logicNode;
+    }
+    return node;
+}
+
+std::shared_ptr<ASTFunctionCall> AST::parseVoidFunctionCall() {
+    auto functionCall = std::make_shared<ASTFunctionCall>();
+    functionCall->type = NodeType::FUNCTION_CALL;
+    functionCall->funcName = eatToken(IDENTIFIER).value;
+    size_t paramIndex = 0;
+    Token nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
+    while (paramIndex || nextToken.type != CLOSE_PAREN) {
+        if (nextToken.type == OPEN_PAREN) {paramIndex++; eatToken(OPEN_PAREN);}
+        if (nextToken.type == CLOSE_PAREN) {paramIndex--; continue;}
+
+        functionCall->parameters.push_back(parseLogicalOr());
         eatOptionalToken({COMMA}); // Optional token eat because last param will not have a comma
 
         nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);

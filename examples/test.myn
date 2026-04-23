@@ -151,5 +151,16 @@ packet BasicPacket {
     //   } defaults;
     //}
 
-    byte arr[Math.PI()];
+    //byte arr[Math.PI()];
+
+    //byte b1;
+    //REWIND(8);
+    //byte b1Again;
+
+    //SKIP(8);
+    //byte b3;
+
+    uint8 b1;
+    TERMINATE_IF(b1 == 1);
+    byte b2;
 };

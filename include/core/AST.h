@@ -34,7 +34,8 @@ enum class NodeType {
     TYPEDEF,
     VARIABLE,
     DEFAULT_BLOCK,
-    SWITCH
+    SWITCH,
+    FUNCTION_CALL
 };
 
 enum class ConditionOperators {
@@ -43,9 +44,11 @@ enum class ConditionOperators {
     LESS_THAN,
     GREATER_THAN,
     LESS_EQUAL_THAN,
-    GREATER_EQUAL_THAN
+    GREATER_EQUAL_THAN,
+    AND,
+    OR,
+    NOT
 };
-
 
 struct ASTField {
     NodeType type;
@@ -73,10 +76,21 @@ struct ASTExpressionBinaryOperation : public ASTExpression {
     std::shared_ptr<ASTExpression> right;
 };
 
-struct ASTFunctionCall : public ASTExpression {
+struct ASTExpressionFunctionCall : public ASTExpression {
     std::string className;
     std::string funcName;
     std::vector<std::shared_ptr<ASTExpression>> parameters;
+};
+
+struct ASTFunctionCall : public ASTField { // Void functions not used in expressions, such as REWIND()
+    std::string funcName;
+    std::vector<std::shared_ptr<ASTExpression>> parameters;
+};
+
+struct ASTCondition : public ASTExpression {
+    std::shared_ptr<ASTExpression> left;
+    std::shared_ptr<ASTExpression> right;
+    std::string op;
 };
 
 struct ASTPrimitiveValueSettings {
@@ -88,12 +102,14 @@ struct ASTPrimitiveValueSettings {
         bool includeTimestamp : 1;
         bool includeRawBytes : 1;
         bool includePacketName : 1;
+        bool packetShouldReturn : 1;
         Flags() : 
             endianBig(true), 
             isHidden(false), 
             includeTimestamp(true), 
             includeRawBytes(true), 
-            includePacketName(true) {}
+            includePacketName(true),
+            packetShouldReturn(false) {}
     };
     Flags flags;
 };
@@ -136,20 +152,20 @@ struct ASTUnion : public ASTField {
     std::vector<std::shared_ptr<ASTField>> subfields;
 };
 
-struct ASTCondition : public ASTField {
+struct ASTParsingCondition : public ASTField {
     ConditionOperators conditionOperator;
     Value parsedCheckValue;
 };
 
 struct ASTBranch : public ASTField {
     ASTPrimitiveValue parseAs;
-    std::vector<std::pair<std::shared_ptr<ASTField>, std::shared_ptr<ASTCondition>>> destinationsAndConditions;
+    std::vector<std::pair<std::shared_ptr<ASTField>, std::shared_ptr<ASTParsingCondition>>> destinationsAndConditions;
     std::shared_ptr<ASTField> destinationDefault;
 };
 
 struct ASTSwitch : public ASTField {
     std::string variableName;
-    std::vector<std::pair<std::shared_ptr<ASTField>, std::shared_ptr<ASTCondition>>> destinationsAndConditions;
+    std::vector<std::pair<std::shared_ptr<ASTField>, std::shared_ptr<ASTParsingCondition>>> destinationsAndConditions;
     std::shared_ptr<ASTField> destinationDefault;
 };
 
@@ -223,6 +239,11 @@ class AST {
         std::shared_ptr<ASTExpression> parseTerm();
         std::shared_ptr<ASTExpression> parseExpression();
         std::shared_ptr<ASTExpression> parseFunctionCall(bool hasClassName, Token token);
+        std::shared_ptr<ASTExpression> parseComparison();
+        std::shared_ptr<ASTExpression> parseLogicalAnd();
+        std::shared_ptr<ASTExpression> parseLogicalOr();
+
+        std::shared_ptr<ASTFunctionCall> parseVoidFunctionCall();
 };
 
 #endif

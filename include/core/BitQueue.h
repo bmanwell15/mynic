@@ -76,6 +76,10 @@ public:
         return bitPos_;
     }
 
+    void setBitPos(size_t newBitPos) {
+        bitPos_ = newBitPos;
+    }
+
 private:
     uint64_t readBits(size_t n) {
         if (n == 0 || n > 64 || bitPos_ + n > data_.size() * 8)

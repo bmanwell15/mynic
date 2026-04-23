@@ -4,6 +4,7 @@ Interpreter::Interpreter() {
     defTypeAliases = {};
     decodedPacket = nullptr;
     astTree = nullptr;
+    terminateSignal = false;
     globalSettings = std::make_shared<ASTPrimitiveValueSettings>();
 }
 
@@ -407,6 +408,12 @@ Value evaluateBinaryOp(std::string op, Value left, Value right) {
             if (op == "-") return l - r;
             if (op == "/") return (r != 0) ? l / r : 0;
             if (op == "%") return l % r;
+            if (op == "==") return (uint64_t)(l == r);
+            if (op == "!=") return (uint64_t)(l != r);
+            if (op == "<") return (uint64_t)(l < r);
+            if (op == ">") return (uint64_t)(l > r);
+            if (op == "<=") return (uint64_t)(l <= r);
+            if (op == ">=") return (uint64_t)(l >= r);
             return 0;
         },
         [&](double l, double r) -> Value { // 2. Handle pure double math
@@ -414,6 +421,12 @@ Value evaluateBinaryOp(std::string op, Value left, Value right) {
             if (op == "*") return l * r;
             if (op == "-") return l - r;
             if (op == "/") return l / r;
+            if (op == "==") return (uint64_t)(l == r);
+            if (op == "!=") return (uint64_t)(l != r);
+            if (op == "<") return (uint64_t)(l < r);
+            if (op == ">") return (uint64_t)(l > r);
+            if (op == "<=") return (uint64_t)(l <= r);
+            if (op == ">=") return (uint64_t)(l >= r);
             return 0.0;
         },
         [&](auto l, auto r) -> Value { // 3. Handle mixed or other types safely
@@ -422,18 +435,26 @@ Value evaluateBinaryOp(std::string op, Value left, Value right) {
                 if (op == "*") return static_cast<double>(l) * static_cast<double>(r);
                 if (op == "-") return static_cast<double>(l) - static_cast<double>(r);
                 if (op == "/") return static_cast<double>(l) / static_cast<double>(r);
-                if (op == "%") return static_cast<uint64_t>(l) % static_cast<uint64_t>(r); 
+                if (op == "%") return static_cast<uint64_t>(l) % static_cast<uint64_t>(r);
+                if (op == "==") return (uint64_t)(static_cast<double>(l) == static_cast<double>(r));
+                if (op == "!=") return (uint64_t)(static_cast<double>(l) != static_cast<double>(r));
+                if (op == "<") return (uint64_t)(static_cast<double>(l) < static_cast<double>(r));
+                if (op == ">") return (uint64_t)(static_cast<double>(l) > static_cast<double>(r));
+                if (op == "<=") return (uint64_t)(static_cast<double>(l) <= static_cast<double>(r));
+                if (op == ">=") return (uint64_t)(static_cast<double>(l) >= static_cast<double>(r));
             }
             if constexpr (std::is_same_v<decltype(l), std::string> && std::is_same_v<decltype(r), std::string>) {
                 if (op == "+") return static_cast<std::string>(l) + static_cast<std::string>(r);
-                throw std::runtime_error("strings can only be added together.");
+                if (op == "==") return (uint64_t)(static_cast<std::string>(l) == static_cast<std::string>(r));
+                if (op == "!=") return (uint64_t)(static_cast<std::string>(l) != static_cast<std::string>(r));
+                throw std::runtime_error("strings can only be added or compared for equality.");
             }
             throw std::runtime_error("Invalid types for binary operator: " + op);
         }
     }, left, right);
 }
 
-Value Interpreter::evaluateASTFunctionCall(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
+Value Interpreter::evaluateASTExpressionFunctionCall(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
     if (functionCall->className == "Math") {
         if (functionCall->funcName == "max") return MynicLib::mathMax(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
         if (functionCall->funcName == "min") return MynicLib::mathMin(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
@@ -458,8 +479,8 @@ Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveVal
     if (auto n = std::dynamic_pointer_cast<ASTExpressionDouble>(node)) {
         return n->value;
     }
-    if (auto n = std::dynamic_pointer_cast<ASTFunctionCall>(node)) {
-        return evaluateASTFunctionCall(interpretedPrimitive, n, bitQueue, rootNode);
+    if (auto n = std::dynamic_pointer_cast<ASTExpressionFunctionCall>(node)) {
+        return evaluateASTExpressionFunctionCall(interpretedPrimitive, n, bitQueue, rootNode);
     }
     if (auto n = std::dynamic_pointer_cast<ASTExpressionVariable>(node)) {
         if (interpretedPrimitive && n->variableName == interpretedPrimitive->name) 
@@ -499,6 +520,60 @@ std::optional<Value> Interpreter::tryEvaluateASTExpression(std::shared_ptr<ASTEx
     return std::nullopt;
 }
 
+bool Interpreter::evaluateASTCondition(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
+    if (auto n = std::dynamic_pointer_cast<ASTExpressionInt>(node)) {return n->value != 0;}
+    if (auto n = std::dynamic_pointer_cast<ASTExpressionDouble>(node)) {return n->value != 0;}
+    if (auto n = std::dynamic_pointer_cast<ASTExpressionVariable>(node)) {
+        if (ast->definedVariables.find(n->variableName) != ast->definedVariables.end())
+            return std::visit([&](auto&& v) -> bool {
+                using V = std::decay_t<decltype(v)>;
+                if constexpr ((std::is_arithmetic_v<V>)) {
+                    return static_cast<double>(v) != 0;
+                } else if constexpr (std::is_same_v<V, std::string>) {
+                    return static_cast<std::string>(v) != "";
+                } else {
+                    return true;
+                }
+            }, ast->definedVariables[n->variableName]);
+    }
+    if (auto n = std::dynamic_pointer_cast<ASTExpressionFunctionCall>(node)) {
+        return std::visit([&](auto&& v) -> bool {
+            using V = std::decay_t<decltype(v)>;
+            if constexpr ((std::is_arithmetic_v<V>)) {
+                return static_cast<double>(v) != 0;
+            } else if constexpr (std::is_same_v<V, std::string>) {
+                return static_cast<std::string>(v) != "";
+            } else {
+                return true;
+            }
+        }, evaluateASTExpressionFunctionCall(interpretedPrimitive, n, bitQueue, rootNode));
+    }
+    if (auto n = std::dynamic_pointer_cast<ASTCondition>(node)) {
+        if (n->op == "&&") {
+            return evaluateASTCondition(interpretedPrimitive, n->left, bitQueue, rootNode) && evaluateASTCondition(interpretedPrimitive, n->right, bitQueue, rootNode);
+        }
+        if (n->op == "||") {
+            return evaluateASTCondition(interpretedPrimitive, n->left, bitQueue, rootNode) || evaluateASTCondition(interpretedPrimitive, n->right, bitQueue, rootNode);
+        }
+        auto leftVal = evaluateASTExpression(interpretedPrimitive, n->left, bitQueue, rootNode);
+        auto rightVal = evaluateASTExpression(interpretedPrimitive, n->right, bitQueue, rootNode);
+        auto result = evaluateBinaryOp(n->op, leftVal, rightVal);
+        return std::visit([](auto&& v) -> bool {
+            using V = std::decay_t<decltype(v)>;
+            if constexpr (std::is_arithmetic_v<V>) {
+                return static_cast<uint64_t>(v) != 0;
+            } else if constexpr (std::is_same_v<V, std::string>) {
+                return static_cast<std::string>(v) != "";
+            } else if (std::is_same_v<V, bool>){
+                return static_cast<bool>(v);
+            } else {
+                return false;
+            }
+        }, result);
+    }
+    return false;
+}
+
 void Interpreter::enforcePostInterpretationSettings(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
     if (!interpretedPrimitive->settings) return;
     if (interpretedPrimitive->settings->exprASTTree) {
@@ -514,6 +589,10 @@ std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket&
     packet->name = packetDef.name;
     packet->type = packetDef.type;
     for (const auto& fieldPtr : packetDef.fields) {
+        if (terminateSignal || (packet->settings && packet->settings->flags.packetShouldReturn)){
+            terminateSignal = false;
+            return packet;
+        }
         auto parsedField = interpretField(fieldPtr, bitQueue, packet);
         if (parsedField->type != NodeType::ROOT_NODE)
             packet->fields.push_back(parsedField);
@@ -637,6 +716,15 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         if (switchDef->destinationDefault) {
             return interpretField(switchDef->destinationDefault, bitQueue, rootNode);
         }
+    } else if (field->type == NodeType::FUNCTION_CALL) {
+        auto functionCall = std::static_pointer_cast<ASTFunctionCall>(field);
+        if (functionCall->funcName == "REWIND") MynicLib::rewind(functionCall, bitQueue, rootNode, this); else
+        if (functionCall->funcName == "SKIP") MynicLib::skip(functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "SEEK") MynicLib::seek(functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "TERMINATE_IF") MynicLib::terminateIf(functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "VALIDATE") MynicLib::validate(functionCall, bitQueue, rootNode, this);
+
+        return std::make_shared<InterpretedField>();
     }
 
     return std::make_shared<InterpretedField>();

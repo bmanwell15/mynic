@@ -101,6 +101,18 @@ Loading Mynic File
         SEGMENT3 defaults;
     }
 }
+- STD Vars and Functions:
+    Vars:
+        TO_END
+        END_OF_STREAM/EOF -> Boolean
+    Functions:
+        Math functions
+        REWIND(uint numOfBits)
+        SKIP(uint numOfBits)
+        SEEK(uint bitPosition) // Sets the bitPos in the stream
+        RETURN_IF(condition)
+        TERMINATE_IF(condition)
+        VALIDATE(condition) // Throws an Interpreter warning if false
 
 TODO:
 -------------------------------
@@ -120,18 +132,6 @@ TODO:
     }
 - API call which counts and runs which bit position corresponds to which field (example, uint16 field2; is byte 3 & 4). Note that this may be impossible due to dynamic sizes.
 - Throw warnings during interpretation
-- STD Vars and Functions:
-    Vars:
-        TO_END
-        END_OF_STREAM/EOF -> Boolean
-    Functions:
-        REWIND(uint numOfBits)
-        SKIP(uint numOfBits)
-        SEEK(uint bitPosition) // Sets the bitPos in the stream
-        RETURN_IF(condition)
-        TERMINATE_IF(condition)
-        VALIDATE(condition) // Throws an Interpreter warning if false
-
 - String Support (Look for string length OR null terminator)
 {
     string variableLengthStr; // Looks for null termination code (0x00)

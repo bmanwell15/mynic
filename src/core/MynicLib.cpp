@@ -13,7 +13,7 @@ double getAsDouble(Value& v) {
 }
 
 
-Value MynicLib::mathMax(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+Value MynicLib::mathMax(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
     uint64_t maxNum = 0;
     double maxDouble = 0;
     for (auto& param : functionCall->parameters) {
@@ -32,7 +32,7 @@ Value MynicLib::mathMax(std::shared_ptr<InterpretedPrimitiveValue> interpretedPr
     return maxNum > maxDouble ? maxNum : maxDouble;
 }
 
-Value MynicLib::mathMin(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+Value MynicLib::mathMin(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
     uint64_t minNum = 0xFFFFFFFFFFFFFFFF;
     double minDouble = 0xFFFFFFFF;
     for (auto& param : functionCall->parameters) {
@@ -51,21 +51,21 @@ Value MynicLib::mathMin(std::shared_ptr<InterpretedPrimitiveValue> interpretedPr
     return minNum < minDouble ? minNum : minDouble;
 }
 
-Value MynicLib::mathPow(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+Value MynicLib::mathPow(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
     if (functionCall->parameters.size() != 2) {throw::std::runtime_error("Wrong number of params in Math.pow()");}
     Value base = interpreter->evaluateASTExpression(interpretedPrimitive, functionCall->parameters[0], bitQueue, rootNode);
     Value raised = interpreter->evaluateASTExpression(interpretedPrimitive, functionCall->parameters[1], bitQueue, rootNode);
     return std::pow(getAsDouble(base), getAsDouble(raised));
 }
 
-Value MynicLib::mathSqrt(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+Value MynicLib::mathSqrt(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
     if (functionCall->parameters.size() != 1) {throw::std::runtime_error("Wrong number of params in Math.sqrt()");}
     Value base = interpreter->evaluateASTExpression(interpretedPrimitive, functionCall->parameters[0], bitQueue, rootNode);
     auto result = getAsDouble(base);
     return result;
 }
 
-Value MynicLib::mathLog(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter, uint8_t logBase) {
+Value MynicLib::mathLog(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter, uint8_t logBase) {
     if (functionCall->parameters.size() != 1) {throw::std::runtime_error("Wrong number of params in Math.log()");}
     Value base = interpreter->evaluateASTExpression(interpretedPrimitive, functionCall->parameters[0], bitQueue, rootNode);
     auto result = getAsDouble(base);
@@ -74,14 +74,14 @@ Value MynicLib::mathLog(std::shared_ptr<InterpretedPrimitiveValue> interpretedPr
     return std::log(result);
 }
 
-Value MynicLib::mathRound(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+Value MynicLib::mathRound(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
     if (functionCall->parameters.size() != 1) {throw::std::runtime_error("Wrong number of params in Math.round()");}
     Value base = interpreter->evaluateASTExpression(interpretedPrimitive, functionCall->parameters[0], bitQueue, rootNode);
     auto result = getAsDouble(base);
     return std::round(result);
 }
 
-Value MynicLib::mathSign(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+Value MynicLib::mathSign(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
     if (functionCall->parameters.size() != 1) {throw::std::runtime_error("Wrong number of params in Math.sign()");}
     Value base = interpreter->evaluateASTExpression(interpretedPrimitive, functionCall->parameters[0], bitQueue, rootNode);
     auto result = getAsDouble(base);
@@ -90,7 +90,7 @@ Value MynicLib::mathSign(std::shared_ptr<InterpretedPrimitiveValue> interpretedP
     return 0;
 }
 
-Value MynicLib::mathAbs(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+Value MynicLib::mathAbs(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
     if (functionCall->parameters.size() != 1) {throw::std::runtime_error("Wrong number of params in Math.sign()");}
     Value base = interpreter->evaluateASTExpression(interpretedPrimitive, functionCall->parameters[0], bitQueue, rootNode);
     auto result = getAsDouble(base);
@@ -99,3 +99,41 @@ Value MynicLib::mathAbs(std::shared_ptr<InterpretedPrimitiveValue> interpretedPr
 
 Value MynicLib::mathPi() {return M_PI;}
 Value MynicLib::mathE() {return M_E;}
+
+void MynicLib::rewind(std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+    if (functionCall->parameters.size() != 1) {throw::std::runtime_error("Wrong number of params in REWIND()");}
+    Value bitVal = interpreter->evaluateASTExpression(nullptr, functionCall->parameters[0], bitQueue, rootNode);
+    size_t bitNum = static_cast<size_t>(getAsDouble(bitVal));
+    if (bitQueue.bitPos() < bitNum) {throw::std::runtime_error("Index out of bounds in REWIND()");}
+    bitQueue.rewind(bitNum);
+}
+
+void MynicLib::skip(std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+    if (functionCall->parameters.size() != 1) {throw::std::runtime_error("Wrong number of params in REWIND()");}
+    Value bitVal = interpreter->evaluateASTExpression(nullptr, functionCall->parameters[0], bitQueue, rootNode);
+    size_t bitNum = static_cast<size_t>(getAsDouble(bitVal));
+    if (bitQueue.size() < bitNum) {throw::std::runtime_error("Index out of bounds in SKIP()");}
+    bitQueue.pop(bitNum);
+}
+
+void MynicLib::seek(std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+    if (functionCall->parameters.size() != 1) {throw::std::runtime_error("Wrong number of params in REWIND()");}
+    Value bitVal = interpreter->evaluateASTExpression(nullptr, functionCall->parameters[0], bitQueue, rootNode);
+    size_t bitPos = static_cast<size_t>(getAsDouble(bitVal));
+    if (bitQueue.size() >= bitPos) {throw::std::runtime_error("Index out of bounds in SEEK()");}
+    bitQueue.setBitPos(bitPos);
+}
+
+void MynicLib::terminateIf(std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+    if (functionCall->parameters.size() != 1) {throw::std::runtime_error("Wrong number of params in REWIND()");}
+    bool evaluatedCondition = interpreter->evaluateASTCondition(nullptr, functionCall->parameters[0], bitQueue, rootNode);
+    interpreter->terminateSignal = evaluatedCondition;
+}
+
+void MynicLib::validate(std::shared_ptr<ASTFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode, Interpreter* interpreter) {
+    if (functionCall->parameters.size() != 1) {throw::std::runtime_error("Wrong number of params in REWIND()");}
+    bool evaluatedCondition = interpreter->evaluateASTCondition(nullptr, functionCall->parameters[0], bitQueue, rootNode);
+    if (!evaluatedCondition) {
+        // Interpreter warning logic goes here...
+    }
+}
