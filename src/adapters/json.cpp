@@ -47,7 +47,7 @@ void encode(std::stringstream& ss, const std::shared_ptr<InterpretedField>& fiel
             if (i < subJsons.size() - 1) ss << ",";
             ss << "\n";
         }
-        ss << indentStr << "}\n";
+        ss << indentStr << "},\n";
     } else if (field->type == NodeType::PRIMITIVE) {
         auto primField = std::static_pointer_cast<InterpretedPrimitiveValue>(field);
         if (primField->settings && primField->settings->flags.isHidden) return;
@@ -104,6 +104,22 @@ void encode(std::stringstream& ss, const std::shared_ptr<InterpretedField>& fiel
     }
 }
 
+void encodeWarnings(std::stringstream& ss, const DecodedPacket& decodedPacket) {
+    if (!decodedPacket.warnings.size()) ss << "   \"Warnings\": []";
+    
+    ss << "   \"Warnings\": [\n";
+    for (size_t i = 0; i < decodedPacket.warnings.size(); i++) {
+        const auto& warning = decodedPacket.warnings[i];
+        ss << "      {\n";
+        ss << "         \"Error Code\": " << (int)(warning.warningType) << ",\n";
+        ss << "         \"Message\": \"" << warning.errorMessage << "\"\n";
+        ss << "      }";
+        if (i != decodedPacket.warnings.size() - 1) ss << ',';
+        ss << '\n';
+    }
+    ss << "   ]\n";
+}
+
 std::string adapters::json::encode(const DecodedPacket& decodedPacket) {
     std::stringstream ss;
     ss << "{\n";
@@ -125,6 +141,7 @@ std::string adapters::json::encode(const DecodedPacket& decodedPacket) {
         ss << "   \"Timestamp\": \"" << timestamp << "\",\n";
     }
     encode(ss, decodedPacket.rootField, 1);
+    encodeWarnings(ss, decodedPacket);
     ss << '}';
     return ss.str();
 }

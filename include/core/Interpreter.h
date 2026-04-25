@@ -61,6 +61,7 @@ struct DecodedPacket {
     std::vector<uint8_t> rawBytes;
     std::shared_ptr<InterpretedPacket> rootField;
     std::string timestamp;
+    std::vector<InterpreterWarning> warnings;
 };
 
 class Interpreter {
@@ -77,6 +78,7 @@ class Interpreter {
         std::optional<Value> tryEvaluateASTExpression(std::shared_ptr<ASTExpression> node);
         Value evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
         bool evaluateASTCondition(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
+        void throwWarning(InterpreterWarningCodes code, std::string message);
     
     private:
         std::shared_ptr<DecodedPacket> decodedPacket;
@@ -89,6 +91,7 @@ class Interpreter {
         std::optional<Value> getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName, BitQueue& bitQueue);
         void enforcePostInterpretationSettings(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
         Value evaluateASTExpressionFunctionCall(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
+        Value evaluateBinaryOp(std::string op, Value left, Value right);
 };
 
 #endif

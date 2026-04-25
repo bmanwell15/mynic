@@ -91,3 +91,10 @@ void ErrorHandler::printBlock(std::vector<Token>& tokens, size_t i) {
         }
     }
 }
+
+InterpreterWarning ErrorHandler::throwInterpreterWarning(InterpreterWarningCodes code, std::string message) {
+    InterpreterWarning warning;
+    warning.warningType = code;
+    warning.errorMessage = message;
+    return warning;
+}

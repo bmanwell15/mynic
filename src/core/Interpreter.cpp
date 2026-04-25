@@ -11,13 +11,14 @@ Interpreter::Interpreter() {
 
 DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes, const std::string& packetName, const std::shared_ptr<ASTNode>& rootNode) {
     astTree = rootNode;
+    terminateSignal = false;
+    isEndOfStream = false;
     decodedPacket = std::make_shared<DecodedPacket>();
-    decodedPacket->rawBytes = dataBytes;
-    decodedPacket->packetName = packetName;
-
     auto now = std::chrono::system_clock::now();
     auto now_ms = std::chrono::floor<std::chrono::milliseconds>(now);
     decodedPacket->timestamp = std::format("{:%F %T}", now_ms); // %F = YYYY-MM-DD, %T = HH:MM:SS.mmm
+    decodedPacket->rawBytes = dataBytes;
+    decodedPacket->packetName = packetName;
 
     BitQueue bitQueue(dataBytes);
 
@@ -29,13 +30,12 @@ DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes,
             decodedPacket->rootField->settings = packet->defaultSettings;
             decodedPacket->rootField->name = packet->name;
             decodedPacket->rootField->type = NodeType::PACKET;
-            terminateSignal = false;
             isEndOfStream = true;
             return *decodedPacket;
         }
     }
-
-    throw std::runtime_error("Packet definition for " + packetName + " not found in AST.");
+    throwWarning(InterpreterWarningCodes::PACKET_NOT_FOUND, "Packet definition for " + packetName + " not found.");
+    return *decodedPacket;
 }
 
 uint64_t enforceEndian(uint64_t value, uint8_t  bitSize, bool isLittle){
@@ -229,7 +229,8 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
             auto primValue = std::static_pointer_cast<InterpretedPrimitiveValue>(field);
             return primValue->value;
         }
-        throw std::runtime_error("Field '" + varName + "' is not a primitive value.");
+        throwWarning(InterpreterWarningCodes::EXPR_VAR_NOT_PRIMITIVE, "Cannot do expr on non primitive variable '" + varName + "'.");
+        return std::nullopt;
     }
     
     // Recursively search in nested structures
@@ -270,13 +271,17 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
 
     for (const auto& enumDef : enums) {
         if (datatype == enumDef->name) {
-            if (enumDef->datatype.substr(0, 4) != "uint") throw std::runtime_error("Enum must have uint type.");
+            if (enumDef->datatype.substr(0, 4) != "uint") {
+                throwWarning(InterpreterWarningCodes::ENUM_TYPE_NOT_INT, "Enum '" + datatype + "' must have uint type.");
+                return 0;
+            }
             for (const auto enumValue : enumDef->variables) {
                 if (std::get<uint64_t>(enumValue->varValue) == bits) {
                     return Value{enumValue->varName};
                 }
             }
-            throw std::runtime_error("Enum value not set"); // May change into a warning?
+            throwWarning(InterpreterWarningCodes::EXPR_VAR_NOT_PRIMITIVE, "Value " + std::to_string(bits) + " does not map to a definition in enum '" + datatype + "'");
+            return 0;
         }
     }
 
@@ -424,12 +429,13 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
         return Value{asString};
     }
 
-    throw std::runtime_error("Unsupported datatype: " + datatype);
+    throwWarning(InterpreterWarningCodes::UNKNOWN_DATATYPE, "Unknown datatype: " + datatype);
+    return 0;
 }
 
 template<class... T> struct overloaded : T... { using T::operator()...; };
 template<class... T> overloaded(T...) -> overloaded<T...>;
-Value evaluateBinaryOp(std::string op, Value left, Value right) {
+Value Interpreter::evaluateBinaryOp(std::string op, Value left, Value right) {
     return std::visit(overloaded{
         [&](int l, int r) -> Value { // 1. Handle pure integer math (to preserve int types)
             if (op == "+") return l + r;
@@ -476,9 +482,11 @@ Value evaluateBinaryOp(std::string op, Value left, Value right) {
                 if (op == "+") return static_cast<std::string>(l) + static_cast<std::string>(r);
                 if (op == "==") return (uint64_t)(static_cast<std::string>(l) == static_cast<std::string>(r));
                 if (op == "!=") return (uint64_t)(static_cast<std::string>(l) != static_cast<std::string>(r));
-                throw std::runtime_error("strings can only be added or compared for equality.");
+                throwWarning(InterpreterWarningCodes::INVALID_STRING_OPERATION, "Invalid operator '" + op + "'. Strings '" + static_cast<std::string>(l) + "' and '" + static_cast<std::string>(r) + "' can only be added or compared for equality.");
+                return 0;
             }
-            throw std::runtime_error("Invalid types for binary operator: " + op);
+            throwWarning(InterpreterWarningCodes::INVALID_BINARY_OPERATOR_TYPE, "Invalid types for binary operator: " + op);
+            return 0;
         }
     }, left, right);
 }
@@ -498,7 +506,8 @@ Value Interpreter::evaluateASTExpressionFunctionCall(std::shared_ptr<Interpreted
         if (functionCall->funcName == "PI") return MynicLib::mathPi();
         if (functionCall->funcName == "E") return MynicLib::mathE();
     }
-    throw std::runtime_error("Function call not found.");
+    throwWarning(InterpreterWarningCodes::FUNCTION_NOT_FOUND, "Function call '" + functionCall->className + "." + functionCall->funcName + "' not found.");
+    return 0;
 }
 
 Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
@@ -519,7 +528,10 @@ Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveVal
             return ast->definedVariables[n->variableName];
         
         auto possibleVariableCallValue = getParsedValue(rootNode, n->variableName, bitQueue);
-        if (!possibleVariableCallValue.has_value()) throw std::runtime_error("Var '" + n->variableName + "' not found in expr.");
+        if (!possibleVariableCallValue.has_value()) {
+            throwWarning(InterpreterWarningCodes::VARIABLE_NOT_FOUND_IN_EXPR, "Variable '" + n->variableName + "' not found in expr.");
+            return 0;
+        }
         return possibleVariableCallValue.value();
     }
     if (auto b = std::dynamic_pointer_cast<ASTExpressionBinaryOperation>(node)) {
@@ -613,12 +625,10 @@ void Interpreter::enforcePostInterpretationSettings(std::shared_ptr<InterpretedP
 
 std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket& packetDef, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
     auto packet = std::make_shared<InterpretedPacket>();
-    // Ensure the interpreted packet has its identifying fields set so
-    // nested segments/packets are recognized when printing.
     packet->name = packetDef.name;
     packet->type = packetDef.type;
     for (const auto& fieldPtr : packetDef.fields) {
-        if (terminateSignal || (packet->settings && packet->settings->flags.packetShouldReturn)){
+        if (terminateSignal || (packet->settings && packet->settings->flags.packetShouldReturn)) {
             return packet;
         }
         auto parsedField = interpretField(fieldPtr, bitQueue, packet);
@@ -687,9 +697,9 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
                 arrayDef->length = static_cast<size_t>(std::get<long>(parsedVal));
             } else if (std::holds_alternative<double>(parsedVal)) {
                 arrayDef->length = static_cast<size_t>(std::get<double>(parsedVal));
-            } else {
-                throw std::runtime_error("Dynamic array length must be a numeric value, not " + std::string(parsedVal.index() ? "complex" : "string"));
             }
+            throwWarning(InterpreterWarningCodes::ARRAY_LENGTH_NOT_INT, "Dynamic array length must be a numeric value, not " + std::string(parsedVal.index() ? "complex" : "string"));
+            return nullptr;
         }
 
         std::shared_ptr<ASTPrimitiveValue> newElementSchema;
@@ -741,8 +751,10 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
     } else if (field->type == NodeType::SWITCH) {
         auto switchDef = std::static_pointer_cast<ASTSwitch>(field);
         auto variableValOpt = getParsedValue(rootNode, switchDef->variableName, bitQueue);
-        if (!variableValOpt.has_value())
-            throw std::runtime_error("Variable in switch not found");
+        if (!variableValOpt.has_value()) {
+            throwWarning(InterpreterWarningCodes::VARIABLE_NOT_FOUND_IN_SWITCH, "Variable '" + switchDef->variableName + "' in switch not found.");
+            return nullptr;
+        }
         Value variableVal = variableValOpt.value();
         for (const auto& nameConditionPair : switchDef->destinationsAndConditions) {
             if (
@@ -772,4 +784,10 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
     }
 
     return std::make_shared<InterpretedField>();
+}
+
+void Interpreter::throwWarning(InterpreterWarningCodes code, std::string message) {
+    auto w = ErrorHandler::throwInterpreterWarning(code, message);
+    decodedPacket->warnings.push_back(w);
+    // terminateSignal = true;
 }
