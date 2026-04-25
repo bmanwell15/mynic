@@ -149,6 +149,19 @@ std::vector<Token> Lexer::tokenize(const std::string content) {
 
             unsigned long long asInt = std::stoull(hexValue, nullptr, 16);
             tokens.push_back(createToken(std::to_string(asInt), ttype, blockDepth, lineNumber));
+        } else if (content.substr(i, 2) == "0b") {
+            ttype = INT_LITERAL; // Prep for converting the binary string to an unsigned int
+            i += 2;
+            std::string binValue = "";
+            ch = content[i];
+            while (i < content.size() && (ch == '0' || ch == '1')) {
+                binValue += ch;
+                ch = content[++i];
+            }
+            i--;
+
+            unsigned long long asInt = std::stoull(binValue, nullptr, 2);
+            tokens.push_back(createToken(std::to_string(asInt), ttype, blockDepth, lineNumber));
         } else { // HANDLE MULTI-LETTERED OPERATORS
             if (ch == '\"') { // Make a string literal
                 std::string str = "\"";

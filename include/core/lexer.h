@@ -16,6 +16,7 @@ enum TokenType { // Holds all of the allowed token values for the language
     MULTI_LINED_COMMENT,
     BOOL_LITERAL,
     HEX_LITERAL,
+    BINARY_LITERAL,
     INT_LITERAL,
     DOUBLE_LITERAL,
     STRING_LITERAL,

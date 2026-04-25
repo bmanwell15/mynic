@@ -46,7 +46,8 @@ void Mynic::printPacketField(std::shared_ptr<ASTField> field, blockDepth_t inden
     std::string indentStr = std::string(indent * PRINT_INDENT_SIZE, ' ');
     if (field->type == NodeType::PRIMITIVE) {
         auto primField = std::static_pointer_cast<ASTPrimitiveValue>(field);
-        std::cout << indentStr << primField->datatype << ' ' << primField->name << " (" << primField->sizeInBits << " bits);" << std::endl;
+        std::string printSizeInBits = (primField->datatype == "string") ? "?" : std::to_string(primField->sizeInBits);
+        std::cout << indentStr << primField->datatype << ' ' << primField->name << " (" << printSizeInBits << " bits);" << std::endl;
     } else if (field->type == NodeType::BITFIELD) {
         auto bitField = std::static_pointer_cast<ASTBitfield>(field);
         std::cout << indentStr << "Bitfield " << bitField->name << " {" << std::endl;

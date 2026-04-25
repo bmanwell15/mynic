@@ -40,7 +40,11 @@ AST::AST(Mynic* myn) {
         {"ipv4Address", 32},
         {"ipAddress32", 32},
         {"ipv6Address", 64}, // Really 128, but cannot take more than 64 bits as of now
-        {"ipAddress128", 64}
+        {"ipAddress128", 64},
+        {"macAddress", 48},
+
+        {"string", 8},
+        {"char", 8}
     };
     mynic = myn;
     currentPacket = nullptr;

@@ -71,6 +71,7 @@ class Interpreter {
         std::vector<std::shared_ptr<ASTEnum>> enums;
         std::shared_ptr<ASTPrimitiveValueSettings> globalSettings;
         bool terminateSignal;
+        bool isEndOfStream;
 
         DecodedPacket interpretBytes(const std::vector<uint8_t>& dataBytes, const std::string& packetName, const  std::shared_ptr<ASTNode>& rootNode);
         std::optional<Value> tryEvaluateASTExpression(std::shared_ptr<ASTExpression> node);

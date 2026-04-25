@@ -17,7 +17,10 @@ void printPrimitive(std::stringstream& ss, std::shared_ptr<InterpretedPrimitiveV
             else
                 ss << "\"0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(value) << std::dec << '\"';
         } else if constexpr (std::is_same_v<T, int8_t>) {
-            ss << static_cast<int>(value);
+            if (primField->settings && primField->settings->units != "")
+                ss << static_cast<int>(value);
+            else
+                ss << '\'' << static_cast<int>(value) << '\'';
         } else if constexpr (std::is_arithmetic_v<T>) {
             ss << value;
         } else {

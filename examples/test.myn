@@ -17,6 +17,8 @@ enum uint8 EnumName {
 }
 
 define ARR_SIZE 0x0A - 2 * 2
+define HEX_LIT 0x2F;
+define BIN_LIT 0b0011; // 3
 
 typedef bool byte_t
 
@@ -160,7 +162,15 @@ packet BasicPacket {
     //SKIP(8);
     //byte b3;
 
-    uint8 b1;
-    TERMINATE_IF(b1 == 1);
-    byte b2;
+    //uint8 b1;
+    //TERMINATE_IF(b1 == 1);
+    //byte b2;
+
+    //bytes arr[0b0101];
+
+    //macAddress addr;
+
+    //string variableStr;
+    //string fix[3];
+    //char ch;
 };

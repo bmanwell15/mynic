@@ -5,6 +5,7 @@ Interpreter::Interpreter() {
     decodedPacket = nullptr;
     astTree = nullptr;
     terminateSignal = false;
+    isEndOfStream = false;
     globalSettings = std::make_shared<ASTPrimitiveValueSettings>();
 }
 
@@ -28,6 +29,8 @@ DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes,
             decodedPacket->rootField->settings = packet->defaultSettings;
             decodedPacket->rootField->name = packet->name;
             decodedPacket->rootField->type = NodeType::PACKET;
+            terminateSignal = false;
+            isEndOfStream = true;
             return *decodedPacket;
         }
     }
@@ -192,6 +195,7 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
 
     if (AST::MYNIC_KEYWORDS.contains(varName)) {
         if (varName == "TO_END") return (uint64_t)(bitQueue.size() / 8);
+        if (varName == "END_OF_STREAM" || varName == "EOF") return !((bool)(bitQueue.size()));
     }
 
     if (foundPeriodIndex != std::string::npos) { // Enum variable lookup
@@ -254,6 +258,7 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
 
 Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) {
     uint64_t bits = bitQueue.pop(field.sizeInBits);
+    isEndOfStream = !bitQueue.size();
     std::string datatype;
 
     if (defTypeAliases.find(field.datatype) != defTypeAliases.end()) // If using deftype alias
@@ -273,6 +278,20 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
             }
             throw std::runtime_error("Enum value not set"); // May change into a warning?
         }
+    }
+
+    if (datatype == "char") {
+        return Value{static_cast<char>(bits)};
+    }
+
+    if (datatype == "string") {
+        char ch = static_cast<char>(bits);
+        std::string out;
+        while (ch != '\0') {
+            out += ch;
+            ch = bitQueue.pop(8);
+        }
+        return Value{out};
     }
 
     if (datatype == "bit" || datatype == "bits") {
@@ -390,6 +409,16 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) 
         ss << std::hex << std::uppercase << std::setfill('0') << std::setw(bytesNum) << bits << bitQueue.pop(64);
         std::string asString = ss.str();
         for (int i = 4; i < asString.size(); i += 5) {
+            asString.insert(i, ":");
+        }
+        return Value{asString};
+    }
+
+    if (datatype == "macAddress" || datatype == "macAddress48") {
+        std::stringstream ss;
+        ss << std::hex << std::uppercase << std::setfill('0') << bits;
+        std::string asString = ss.str();
+        for (int i = 2; i < asString.size(); i += 3) {
             asString.insert(i, ":");
         }
         return Value{asString};
@@ -590,7 +619,6 @@ std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket&
     packet->type = packetDef.type;
     for (const auto& fieldPtr : packetDef.fields) {
         if (terminateSignal || (packet->settings && packet->settings->flags.packetShouldReturn)){
-            terminateSignal = false;
             return packet;
         }
         auto parsedField = interpretField(fieldPtr, bitQueue, packet);
@@ -664,15 +692,31 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
             }
         }
 
+        std::shared_ptr<ASTPrimitiveValue> newElementSchema;
+        std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive;
+        if (arrayDef->elementSchema->datatype == "string") {
+            newElementSchema = std::make_shared<ASTPrimitiveValue>(*arrayDef->elementSchema);
+            newElementSchema->datatype = "char";
+            interpretedPrimitive = std::make_shared<InterpretedPrimitiveValue>();
+            interpretedPrimitive->datatype = "string";
+            interpretedPrimitive->name = interpretedArray.name;
+            interpretedPrimitive->type = NodeType::PRIMITIVE;
+            interpretedPrimitive->settings = arrayDef->elementSchema->settings;
+            interpretedPrimitive->value = Value{""};
+        }
+
         for (size_t i = 0; i < arrayDef->length; i++) {
             if ((arrayDef->elementSchema->datatype == "bytes" || arrayDef->elementSchema->datatype == "bits") && interpretedArray.list.size()) {
                 auto a = std::static_pointer_cast<InterpretedPrimitiveValue>(interpretField(arrayDef->elementSchema, bitQueue, rootNode));
                 auto originalValue = std::static_pointer_cast<InterpretedPrimitiveValue>(interpretedArray.list[0]);
                 originalValue->value = std::get<std::string>(originalValue->value) + std::get<std::string>(a->value).substr(2); // .substr(2) to remove 0x prefix
+            } else if (arrayDef->elementSchema->datatype == "string") {
+                interpretedPrimitive->value = Value{std::get<std::string>(interpretedPrimitive->value) + std::get<char>(std::static_pointer_cast<InterpretedPrimitiveValue>(interpretField(newElementSchema, bitQueue, rootNode))->value)};
             } else {
                 interpretedArray.list.push_back(interpretField(arrayDef->elementSchema, bitQueue, rootNode));
             }
         }
+        if (arrayDef->elementSchema->datatype == "string") return interpretedPrimitive;
         return std::make_shared<InterpretedArray>(interpretedArray);
     } else if (field->type == NodeType::BRANCH) {
         auto branchDef = std::static_pointer_cast<ASTBranch>(field);
