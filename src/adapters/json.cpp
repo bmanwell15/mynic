@@ -47,7 +47,8 @@ void encode(std::stringstream& ss, const std::shared_ptr<InterpretedField>& fiel
             if (i < subJsons.size() - 1) ss << ",";
             ss << "\n";
         }
-        ss << indentStr << "},\n";
+        std::string addComa = (indent == 1) ? "," : "";
+        ss << indentStr << "}" << addComa << "\n";
     } else if (field->type == NodeType::PRIMITIVE) {
         auto primField = std::static_pointer_cast<InterpretedPrimitiveValue>(field);
         if (primField->settings && primField->settings->flags.isHidden) return;
@@ -105,7 +106,7 @@ void encode(std::stringstream& ss, const std::shared_ptr<InterpretedField>& fiel
 }
 
 void encodeWarnings(std::stringstream& ss, const DecodedPacket& decodedPacket) {
-    if (!decodedPacket.warnings.size()) ss << "   \"Warnings\": []";
+    if (!decodedPacket.warnings.size()) {ss << "   \"Warnings\": []\n";return;}
     
     ss << "   \"Warnings\": [\n";
     for (size_t i = 0; i < decodedPacket.warnings.size(); i++) {

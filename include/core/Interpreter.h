@@ -68,16 +68,18 @@ class Interpreter {
     public:
         Interpreter();
         AST* ast;
+        BitQueue bitQueue;
+        std::shared_ptr<InterpretedPacket> rootNode;
         std::unordered_map<std::string, std::string> defTypeAliases; // {newType, existingType}
         std::vector<std::shared_ptr<ASTEnum>> enums;
         std::shared_ptr<ASTPrimitiveValueSettings> globalSettings;
         bool terminateSignal;
         bool isEndOfStream;
 
-        DecodedPacket interpretBytes(const std::vector<uint8_t>& dataBytes, const std::string& packetName, const  std::shared_ptr<ASTNode>& rootNode);
+        DecodedPacket interpretBytes(const std::vector<uint8_t>& dataBytes, const std::string& packetName, const  std::shared_ptr<ASTNode>& pAstTree);
         std::optional<Value> tryEvaluateASTExpression(std::shared_ptr<ASTExpression> node);
-        Value evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
-        bool evaluateASTCondition(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
+        Value evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node);
+        bool evaluateASTCondition(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node);
         void throwWarning(InterpreterWarningCodes code, std::string message);
     
     private:
@@ -85,12 +87,12 @@ class Interpreter {
         std::shared_ptr<ASTNode> astTree;
 
         std::shared_ptr<InterpretedField> findField(const std::shared_ptr<InterpretedField>& field, const std::string& name);
-        std::shared_ptr<InterpretedPacket> interpretPacket(const ASTPacket& packetDef, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode = nullptr);
-        std::shared_ptr<InterpretedField> interpretField(std::shared_ptr<ASTField> field, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode = nullptr);
-        Value interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue);
-        std::optional<Value> getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName, BitQueue& bitQueue);
-        void enforcePostInterpretationSettings(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
-        Value evaluateASTExpressionFunctionCall(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode);
+        std::shared_ptr<InterpretedPacket> interpretPacket(const ASTPacket& packetDef);
+        std::shared_ptr<InterpretedField> interpretField(std::shared_ptr<ASTField> field);
+        Value interpretValue(ASTPrimitiveValue& field);
+        std::optional<Value> getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName);
+        void enforcePostInterpretationSettings(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive);
+        Value evaluateASTExpressionFunctionCall(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall);
         Value evaluateBinaryOp(std::string op, Value left, Value right);
 };
 

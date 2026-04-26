@@ -9,8 +9,8 @@ Interpreter::Interpreter() {
     globalSettings = std::make_shared<ASTPrimitiveValueSettings>();
 }
 
-DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes, const std::string& packetName, const std::shared_ptr<ASTNode>& rootNode) {
-    astTree = rootNode;
+DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes, const std::string& packetName, const std::shared_ptr<ASTNode>& pAstTree) {
+    astTree = pAstTree;
     terminateSignal = false;
     isEndOfStream = false;
     decodedPacket = std::make_shared<DecodedPacket>();
@@ -20,13 +20,15 @@ DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes,
     decodedPacket->rawBytes = dataBytes;
     decodedPacket->packetName = packetName;
 
-    BitQueue bitQueue(dataBytes);
+    BitQueue bq(dataBytes);
+    bitQueue = bq;
 
-    for (const auto& [name, field] : rootNode->properties) {
+    for (const auto& [name, field] : astTree->properties) {
         if (field && field->type == NodeType::PACKET && name == packetName) { // Found the packet definition in the AST
             auto packet = std::static_pointer_cast<ASTPacket>(field);
-            decodedPacket->rootField = std::make_shared<InterpretedPacket>();
-            decodedPacket->rootField = interpretPacket(*packet, bitQueue, decodedPacket->rootField);
+            rootNode = std::make_shared<InterpretedPacket>();
+            decodedPacket->rootField = rootNode;
+            decodedPacket->rootField = interpretPacket(*packet);
             decodedPacket->rootField->settings = packet->defaultSettings;
             decodedPacket->rootField->name = packet->name;
             decodedPacket->rootField->type = NodeType::PACKET;
@@ -190,7 +192,7 @@ std::shared_ptr<InterpretedField> Interpreter::findField(const std::shared_ptr<I
     return nullptr;
 }
 
-std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName, BitQueue& bitQueue) {
+std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName) {
     auto foundPeriodIndex = varName.find('.');
 
     if (AST::MYNIC_KEYWORDS.contains(varName)) {
@@ -237,19 +239,19 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
     if (field->type == NodeType::PACKET || field->type == NodeType::SEGMENT) {
         auto packet = std::static_pointer_cast<InterpretedPacket>(field);
         for (const auto& subfield : packet->fields) {
-            auto result = getParsedValue(subfield, varName, bitQueue);
+            auto result = getParsedValue(subfield, varName);
             if (result.has_value()) return result;
         }
     } else if (field->type == NodeType::BITFIELD) {
         auto bitfield = std::static_pointer_cast<InterpretedBitfield>(field);
         for (const auto& subfield : bitfield->subfields) {
-            auto result = getParsedValue(subfield, varName, bitQueue);
+            auto result = getParsedValue(subfield, varName);
             if (result.has_value()) return result;
         }
     } else if (field->type == NodeType::UNION) {
         auto unionfield = std::static_pointer_cast<InterpretedUnionfield>(field);
         for (const auto& subfield : unionfield->subfields) {
-            auto result = getParsedValue(subfield, varName, bitQueue);
+            auto result = getParsedValue(subfield, varName);
             if (result.has_value()) return result;
         }
     }
@@ -257,7 +259,7 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
     return std::nullopt;
 }
 
-Value Interpreter::interpretValue(ASTPrimitiveValue& field, BitQueue& bitQueue) {
+Value Interpreter::interpretValue(ASTPrimitiveValue& field) {
     uint64_t bits = bitQueue.pop(field.sizeInBits);
     isEndOfStream = !bitQueue.size();
     std::string datatype;
@@ -491,18 +493,18 @@ Value Interpreter::evaluateBinaryOp(std::string op, Value left, Value right) {
     }, left, right);
 }
 
-Value Interpreter::evaluateASTExpressionFunctionCall(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
+Value Interpreter::evaluateASTExpressionFunctionCall(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall) {
     if (functionCall->className == "Math") {
-        if (functionCall->funcName == "max") return MynicLib::mathMax(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
-        if (functionCall->funcName == "min") return MynicLib::mathMin(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
-        if (functionCall->funcName == "pow") return MynicLib::mathPow(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
-        if (functionCall->funcName == "sqrt") return MynicLib::mathSqrt(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
-        if (functionCall->funcName == "log") return MynicLib::mathLog(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
-        if (functionCall->funcName == "log10") return MynicLib::mathLog(interpretedPrimitive, functionCall, bitQueue, rootNode, this, 10);
-        if (functionCall->funcName == "log2") return MynicLib::mathLog(interpretedPrimitive, functionCall, bitQueue, rootNode, this, 2);
-        if (functionCall->funcName == "round") return MynicLib::mathRound(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
-        if (functionCall->funcName == "sign") return MynicLib::mathSign(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
-        if (functionCall->funcName == "abs") return MynicLib::mathAbs(interpretedPrimitive, functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "max") return MynicLib::mathMax(interpretedPrimitive, functionCall, this);
+        if (functionCall->funcName == "min") return MynicLib::mathMin(interpretedPrimitive, functionCall, this);
+        if (functionCall->funcName == "pow") return MynicLib::mathPow(interpretedPrimitive, functionCall, this);
+        if (functionCall->funcName == "sqrt") return MynicLib::mathSqrt(interpretedPrimitive, functionCall, this);
+        if (functionCall->funcName == "log") return MynicLib::mathLog(interpretedPrimitive, functionCall, this);
+        if (functionCall->funcName == "log10") return MynicLib::mathLog(interpretedPrimitive, functionCall, this, 10);
+        if (functionCall->funcName == "log2") return MynicLib::mathLog(interpretedPrimitive, functionCall, this, 2);
+        if (functionCall->funcName == "round") return MynicLib::mathRound(interpretedPrimitive, functionCall, this);
+        if (functionCall->funcName == "sign") return MynicLib::mathSign(interpretedPrimitive, functionCall, this);
+        if (functionCall->funcName == "abs") return MynicLib::mathAbs(interpretedPrimitive, functionCall, this);
         if (functionCall->funcName == "PI") return MynicLib::mathPi();
         if (functionCall->funcName == "E") return MynicLib::mathE();
     }
@@ -510,7 +512,7 @@ Value Interpreter::evaluateASTExpressionFunctionCall(std::shared_ptr<Interpreted
     return 0;
 }
 
-Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
+Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node) {
     if (auto n = std::dynamic_pointer_cast<ASTExpressionInt>(node)) {
         return n->value;
     }
@@ -518,7 +520,7 @@ Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveVal
         return n->value;
     }
     if (auto n = std::dynamic_pointer_cast<ASTExpressionFunctionCall>(node)) {
-        return evaluateASTExpressionFunctionCall(interpretedPrimitive, n, bitQueue, rootNode);
+        return evaluateASTExpressionFunctionCall(interpretedPrimitive, n);
     }
     if (auto n = std::dynamic_pointer_cast<ASTExpressionVariable>(node)) {
         if (interpretedPrimitive && n->variableName == interpretedPrimitive->name) 
@@ -527,7 +529,7 @@ Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveVal
         if (ast->definedVariables.find(n->variableName) != ast->definedVariables.end())
             return ast->definedVariables[n->variableName];
         
-        auto possibleVariableCallValue = getParsedValue(rootNode, n->variableName, bitQueue);
+        auto possibleVariableCallValue = getParsedValue(rootNode, n->variableName);
         if (!possibleVariableCallValue.has_value()) {
             throwWarning(InterpreterWarningCodes::VARIABLE_NOT_FOUND_IN_EXPR, "Variable '" + n->variableName + "' not found in expr.");
             return 0;
@@ -535,8 +537,8 @@ Value Interpreter::evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveVal
         return possibleVariableCallValue.value();
     }
     if (auto b = std::dynamic_pointer_cast<ASTExpressionBinaryOperation>(node)) {
-        Value leftVal = evaluateASTExpression(interpretedPrimitive, b->left, bitQueue, rootNode);
-        Value rightVal = evaluateASTExpression(interpretedPrimitive, b->right, bitQueue, rootNode);
+        Value leftVal = evaluateASTExpression(interpretedPrimitive, b->left);
+        Value rightVal = evaluateASTExpression(interpretedPrimitive, b->right);
         return evaluateBinaryOp(b->op, leftVal, rightVal);
     }
     return 0;
@@ -561,7 +563,7 @@ std::optional<Value> Interpreter::tryEvaluateASTExpression(std::shared_ptr<ASTEx
     return std::nullopt;
 }
 
-bool Interpreter::evaluateASTCondition(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
+bool Interpreter::evaluateASTCondition(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node) {
     if (auto n = std::dynamic_pointer_cast<ASTExpressionInt>(node)) {return n->value != 0;}
     if (auto n = std::dynamic_pointer_cast<ASTExpressionDouble>(node)) {return n->value != 0;}
     if (auto n = std::dynamic_pointer_cast<ASTExpressionVariable>(node)) {
@@ -587,17 +589,17 @@ bool Interpreter::evaluateASTCondition(std::shared_ptr<InterpretedPrimitiveValue
             } else {
                 return true;
             }
-        }, evaluateASTExpressionFunctionCall(interpretedPrimitive, n, bitQueue, rootNode));
+        }, evaluateASTExpressionFunctionCall(interpretedPrimitive, n));
     }
     if (auto n = std::dynamic_pointer_cast<ASTCondition>(node)) {
         if (n->op == "&&") {
-            return evaluateASTCondition(interpretedPrimitive, n->left, bitQueue, rootNode) && evaluateASTCondition(interpretedPrimitive, n->right, bitQueue, rootNode);
+            return evaluateASTCondition(interpretedPrimitive, n->left) && evaluateASTCondition(interpretedPrimitive, n->right);
         }
         if (n->op == "||") {
-            return evaluateASTCondition(interpretedPrimitive, n->left, bitQueue, rootNode) || evaluateASTCondition(interpretedPrimitive, n->right, bitQueue, rootNode);
+            return evaluateASTCondition(interpretedPrimitive, n->left) || evaluateASTCondition(interpretedPrimitive, n->right);
         }
-        auto leftVal = evaluateASTExpression(interpretedPrimitive, n->left, bitQueue, rootNode);
-        auto rightVal = evaluateASTExpression(interpretedPrimitive, n->right, bitQueue, rootNode);
+        auto leftVal = evaluateASTExpression(interpretedPrimitive, n->left);
+        auto rightVal = evaluateASTExpression(interpretedPrimitive, n->right);
         auto result = evaluateBinaryOp(n->op, leftVal, rightVal);
         return std::visit([](auto&& v) -> bool {
             using V = std::decay_t<decltype(v)>;
@@ -615,15 +617,15 @@ bool Interpreter::evaluateASTCondition(std::shared_ptr<InterpretedPrimitiveValue
     return false;
 }
 
-void Interpreter::enforcePostInterpretationSettings(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
+void Interpreter::enforcePostInterpretationSettings(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive) {
     if (!interpretedPrimitive->settings) return;
     if (interpretedPrimitive->settings->exprASTTree) {
-        interpretedPrimitive->value = evaluateASTExpression(interpretedPrimitive, interpretedPrimitive->settings->exprASTTree, bitQueue, rootNode);
+        interpretedPrimitive->value = evaluateASTExpression(interpretedPrimitive, interpretedPrimitive->settings->exprASTTree);
     }
 }
 
 
-std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket& packetDef, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
+std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket& packetDef) {
     auto packet = std::make_shared<InterpretedPacket>();
     packet->name = packetDef.name;
     packet->type = packetDef.type;
@@ -631,19 +633,19 @@ std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket&
         if (terminateSignal || (packet->settings && packet->settings->flags.packetShouldReturn)) {
             return packet;
         }
-        auto parsedField = interpretField(fieldPtr, bitQueue, packet);
+        auto parsedField = interpretField(fieldPtr);
         if (parsedField->type != NodeType::ROOT_NODE)
             packet->fields.push_back(parsedField);
     }
     return packet;
 }
 
-std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<ASTField> field, BitQueue& bitQueue, std::shared_ptr<InterpretedPacket> rootNode) {
+std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<ASTField> field) {
     if (field->type == NodeType::PRIMITIVE) {
         auto primField = std::static_pointer_cast<ASTPrimitiveValue>(field);
 
         if (astTree->properties[primField->datatype]) { // If segment exists
-            return interpretField(astTree->properties[primField->datatype], bitQueue, rootNode);
+            return interpretField(astTree->properties[primField->datatype]);
         }
 
         auto interpretedField = std::make_shared<InterpretedPrimitiveValue>();
@@ -652,8 +654,8 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         interpretedField->type = NodeType::PRIMITIVE;
         interpretedField->settings = primField->settings;
         interpretedField->datatype = primField->datatype;
-        interpretedField->value = interpretValue(*primField, bitQueue);
-        enforcePostInterpretationSettings(interpretedField, bitQueue, rootNode);
+        interpretedField->value = interpretValue(*primField);
+        enforcePostInterpretationSettings(interpretedField);
         return interpretedField;
     } else if (field->type == NodeType::BITFIELD) {
         auto bitfieldDef = std::static_pointer_cast<ASTBitfield>(field);
@@ -661,7 +663,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         interpretedBitfield.name = bitfieldDef->name;
         interpretedBitfield.type = NodeType::BITFIELD;
         for (const auto& subfieldPtr : bitfieldDef->subfields) {
-            interpretedBitfield.subfields.push_back(interpretField(subfieldPtr, bitQueue, rootNode));
+            interpretedBitfield.subfields.push_back(interpretField(subfieldPtr));
         }
         return std::make_shared<InterpretedBitfield>(interpretedBitfield);
     } else if (field->type == NodeType::UNION) {
@@ -670,7 +672,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         interpretedUnionfield.name = unionfieldDef->name;
         interpretedUnionfield.type = NodeType::UNION;
         for (const auto& subfieldPtr : unionfieldDef->subfields) {
-            auto interpretedSubfield = interpretField(subfieldPtr, bitQueue, rootNode);
+            auto interpretedSubfield = interpretField(subfieldPtr);
             interpretedUnionfield.subfields.push_back(interpretedSubfield);
             bitQueue.rewind(unionfieldDef->sizeInBits); // Rewind to interpret again
         }
@@ -678,7 +680,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         return std::make_shared<InterpretedUnionfield>(interpretedUnionfield);
     } else if (field->type == NodeType::SEGMENT || field->type == NodeType::PACKET) {
         auto segment = std::static_pointer_cast<ASTPacket>(field);
-        return interpretPacket(*segment, bitQueue, rootNode);
+        return interpretPacket(*segment);
     } else if (field->type == NodeType::ARRAY) {
         auto arrayDef = std::static_pointer_cast<ASTArray>(field);
         InterpretedArray interpretedArray;
@@ -686,7 +688,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         interpretedArray.type = NodeType::ARRAY;
 
         if (arrayDef->dynamicLength) {
-            auto parsedVal = evaluateASTExpression(nullptr, arrayDef->dynamicLength, bitQueue, rootNode);
+            auto parsedVal = evaluateASTExpression(nullptr, arrayDef->dynamicLength);
             if (std::holds_alternative<uint64_t>(parsedVal)) {
                 arrayDef->length = std::get<uint64_t>(parsedVal);
             } else if (std::holds_alternative<int64_t>(parsedVal)) {
@@ -717,20 +719,20 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
 
         for (size_t i = 0; i < arrayDef->length; i++) {
             if ((arrayDef->elementSchema->datatype == "bytes" || arrayDef->elementSchema->datatype == "bits") && interpretedArray.list.size()) {
-                auto a = std::static_pointer_cast<InterpretedPrimitiveValue>(interpretField(arrayDef->elementSchema, bitQueue, rootNode));
+                auto a = std::static_pointer_cast<InterpretedPrimitiveValue>(interpretField(arrayDef->elementSchema));
                 auto originalValue = std::static_pointer_cast<InterpretedPrimitiveValue>(interpretedArray.list[0]);
                 originalValue->value = std::get<std::string>(originalValue->value) + std::get<std::string>(a->value).substr(2); // .substr(2) to remove 0x prefix
             } else if (arrayDef->elementSchema->datatype == "string") {
-                interpretedPrimitive->value = Value{std::get<std::string>(interpretedPrimitive->value) + std::get<char>(std::static_pointer_cast<InterpretedPrimitiveValue>(interpretField(newElementSchema, bitQueue, rootNode))->value)};
+                interpretedPrimitive->value = Value{std::get<std::string>(interpretedPrimitive->value) + std::get<char>(std::static_pointer_cast<InterpretedPrimitiveValue>(interpretField(newElementSchema))->value)};
             } else {
-                interpretedArray.list.push_back(interpretField(arrayDef->elementSchema, bitQueue, rootNode));
+                interpretedArray.list.push_back(interpretField(arrayDef->elementSchema));
             }
         }
         if (arrayDef->elementSchema->datatype == "string") return interpretedPrimitive;
         return std::make_shared<InterpretedArray>(interpretedArray);
     } else if (field->type == NodeType::BRANCH) {
         auto branchDef = std::static_pointer_cast<ASTBranch>(field);
-        Value parsedPrimitiveVal = interpretValue(branchDef->parseAs, bitQueue);
+        Value parsedPrimitiveVal = interpretValue(branchDef->parseAs);
         bitQueue.rewind(branchDef->parseAs.sizeInBits);
         for (const auto& nameConditionPair : branchDef->destinationsAndConditions) {
             if (
@@ -741,16 +743,16 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
                 nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_THAN && parsedPrimitiveVal > nameConditionPair.second->parsedCheckValue ||
                 nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_EQUAL_THAN && parsedPrimitiveVal >= nameConditionPair.second->parsedCheckValue
             ) {
-                return interpretField(nameConditionPair.first, bitQueue, rootNode);
+                return interpretField(nameConditionPair.first);
             }
         }
 
         if (branchDef->destinationDefault) {
-            return interpretField(branchDef->destinationDefault, bitQueue, rootNode);
+            return interpretField(branchDef->destinationDefault);
         }
     } else if (field->type == NodeType::SWITCH) {
         auto switchDef = std::static_pointer_cast<ASTSwitch>(field);
-        auto variableValOpt = getParsedValue(rootNode, switchDef->variableName, bitQueue);
+        auto variableValOpt = getParsedValue(rootNode, switchDef->variableName);
         if (!variableValOpt.has_value()) {
             throwWarning(InterpreterWarningCodes::VARIABLE_NOT_FOUND_IN_SWITCH, "Variable '" + switchDef->variableName + "' in switch not found.");
             return nullptr;
@@ -765,20 +767,19 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
                 nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_THAN && variableVal > nameConditionPair.second->parsedCheckValue ||
                 nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_EQUAL_THAN && variableVal >= nameConditionPair.second->parsedCheckValue
             ) {
-                return interpretField(nameConditionPair.first, bitQueue, rootNode);
+                return interpretField(nameConditionPair.first);
             }
         }
 
         if (switchDef->destinationDefault) {
-            return interpretField(switchDef->destinationDefault, bitQueue, rootNode);
+            return interpretField(switchDef->destinationDefault);
         }
     } else if (field->type == NodeType::FUNCTION_CALL) {
         auto functionCall = std::static_pointer_cast<ASTFunctionCall>(field);
-        if (functionCall->funcName == "REWIND") MynicLib::rewind(functionCall, bitQueue, rootNode, this); else
-        if (functionCall->funcName == "SKIP") MynicLib::skip(functionCall, bitQueue, rootNode, this);
-        if (functionCall->funcName == "SEEK") MynicLib::seek(functionCall, bitQueue, rootNode, this);
-        if (functionCall->funcName == "TERMINATE_IF") MynicLib::terminateIf(functionCall, bitQueue, rootNode, this);
-        if (functionCall->funcName == "VALIDATE") MynicLib::validate(functionCall, bitQueue, rootNode, this);
+        if (functionCall->funcName == "REWIND") MynicLib::rewind(functionCall, this); else
+        if (functionCall->funcName == "SKIP") MynicLib::skip(functionCall, this);
+        if (functionCall->funcName == "SEEK") MynicLib::seek(functionCall, this);
+        if (functionCall->funcName == "TERMINATE_IF") MynicLib::terminateIf(functionCall, this);
 
         return std::make_shared<InterpretedField>();
     }

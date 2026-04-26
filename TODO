@@ -112,7 +112,6 @@ Loading Mynic File
         SEEK(uint bitPosition) // Sets the bitPos in the stream
         RETURN_IF(condition)
         TERMINATE_IF(condition)
-        VALIDATE(condition) // Throws an Interpreter warning if false
 - Add 0b binary literal
 - MAC (hardware) address datatype (6 byte [8E:FF:00:00:FF:EE])
 - String Support (Look for string length OR null terminator)
@@ -121,6 +120,7 @@ Loading Mynic File
     string fixedLengthStr[10]; // Will gather 10 bytes of chars
     char oneChar;
 }
+- Throw warnings during interpretation
 
 TODO:
 -------------------------------
@@ -139,7 +139,6 @@ TODO:
         // break, continue keywords?
     }
 - API call which counts and runs which bit position corresponds to which field (example, uint16 field2; is byte 3 & 4). Note that this may be impossible due to dynamic sizes.
-- Throw warnings during interpretation
 - Add csv support for outputs
 
 - STD Mynic files for popular protocols

@@ -173,7 +173,4 @@ packet BasicPacket {
     //string variableStr;
     //string fix[3];
     //char ch;
-
-    EnumName e;
-    EnumName e2;
 };
