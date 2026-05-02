@@ -8,6 +8,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -g")
 
 add_executable(mynic_cli 
     main.cpp
+    CommandHandler.cpp
+
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/Mynic.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/AST.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/ErrorHandler.cpp
@@ -16,6 +18,7 @@ add_executable(mynic_cli
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/MynicLib.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../adapters/json.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../adapters/FileHandler.cpp
 )
 
 # 1. Point to the library file
@@ -28,6 +31,7 @@ target_include_directories(mynic_cli PRIVATE
     .
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/core
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/adapters
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include/cli
 )
 
 # 3. Installation logic (Optional but kept for your structure)

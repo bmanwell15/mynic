@@ -11,18 +11,22 @@
 #include "AST.h"
 #include "Interpreter.h"
 
+#define MYNIC_CORE_VERSION "Mynic Core version 1.0.0"
 #define PRINT_INDENT_SIZE 3
 
 
 class Mynic {
     public:
         Mynic();
+        ~Mynic();
 
         bool loadFile(std::string& filename);
 
         void printSchema();
         void printPacket(const std::string& packetName);
         void printSegment(const std::string& segmentName);
+
+        std::string version();
 
         DecodedPacket decodePacket(const std::string& strBytes, const std::string& packetName, bool asBits=false);
         DecodedPacket decodePacket(const std::vector<uint8_t>& dataBytes, const std::string& packetName);

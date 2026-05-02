@@ -6,12 +6,20 @@ Mynic::Mynic() : ast(this) {
     interpreter.ast = &ast;
 }
 
+Mynic::~Mynic() = default;
+
+std::string Mynic::version() {
+    return MYNIC_CORE_VERSION;
+}
+
 bool Mynic::loadFile(std::string& filename) {
-    // Implementation for loading a file goes here
+    // If filename already in Lexer, don't parse again
+    if (std::find(Lexer::fileNames.begin(), Lexer::fileNames.end(), filename) != Lexer::fileNames.end()) return false;
+
     std::string fileContent = collectFileCode(filename);
+    if (fileContent == "") return false;
 
     Lexer::fileNames.push_back(filename);
-
     std::vector<Token> tokens = Lexer::tokenize(fileContent);
 
     // for (int i = 0; i < tokens.size(); i++) { // Debug only
@@ -35,7 +43,7 @@ std::string Mynic::collectFileCode(const std::string& FILENAME) {
     std::string fileContent;
     std::ifstream file(FILENAME);
 
-    if (!file) {throw std::runtime_error("Could not open file: " + FILENAME);}
+    if (!file) {return "";}
 
     while (std::getline(file, line)) {fileContent += line + "\n";}
     file.close();
@@ -129,12 +137,7 @@ DecodedPacket Mynic::decodePacket(const std::string& strBytes, const std::string
 }
 
 DecodedPacket Mynic::decodePacket(const std::vector<uint8_t>& dataBytes, const std::string& packetName) {
-    auto startTime = std::chrono::high_resolution_clock::now();
-    DecodedPacket decoded = interpreter.interpretBytes(dataBytes, packetName, rootNode);
-    auto endTime = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-    std::cout << "Interpreted Packet in " << duration << " ms\n" << std::endl;
-    return decoded;
+    return interpreter.interpretBytes(dataBytes, packetName, rootNode);
 }
 
 std::vector<uint8_t> Mynic::bitsToBytes(const std::string& bitStr) {

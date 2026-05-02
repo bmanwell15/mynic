@@ -173,4 +173,6 @@ packet BasicPacket {
     //string variableStr;
     //string fix[3];
     //char ch;
+    byte b;
+    bool bo;
 };
