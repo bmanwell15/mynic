@@ -3,14 +3,14 @@ project(MynicCLI VERSION 1.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# Fixed typo: it's usually -O0 (the letter O, not zero) for no optimization
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -g")
 
 add_executable(mynic_cli 
     main.cpp
     CommandHandler.cpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../core/Mynic.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../api/Mynic.cpp
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../core/Mynic.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/AST.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/ErrorHandler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/Interpreter.cpp
@@ -19,6 +19,7 @@ add_executable(mynic_cli
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../adapters/json.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../adapters/FileHandler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../adapters/objects.cpp
 )
 
 # 1. Point to the library file
@@ -31,6 +32,7 @@ target_include_directories(mynic_cli PRIVATE
     .
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/core
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/adapters
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include/api
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/cli
 )
 

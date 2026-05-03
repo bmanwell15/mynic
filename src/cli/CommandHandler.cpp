@@ -3,23 +3,6 @@
 std::shared_ptr<Mynic> CommandHandler::decoder = std::make_shared<Mynic>();
 std::string CommandHandler::exportFilePath;
 
-std::vector<std::string> split(const std::string &txt, char ch) {
-    size_t pos = txt.find(ch);
-    size_t initialPos = 0;
-    std::vector<std::string> strs;
-
-    // Decompose statement
-    while( pos != std::string::npos ) {
-        strs.push_back(txt.substr( initialPos, pos - initialPos ));
-        initialPos = pos + 1;
-        pos = txt.find(ch, initialPos);
-    }
-
-    // Add the last one
-    strs.push_back(txt.substr( initialPos, std::min( pos, txt.size() ) - initialPos + 1 ));
-    return strs;
-}
-
 void CommandHandler::runCommand(std::string command) {
     auto commandTokens = Lexer::tokenize(command);
     if (commandTokens[0].value == "interpret" || commandTokens[0].type == OPEN_PAREN) return CommandHandler::interpret(commandTokens);
@@ -80,7 +63,7 @@ void CommandHandler::reset() {
 }
 
 void CommandHandler::load(std::string command) {
-    auto commandChunks = split(command, ' ');
+    auto commandChunks = CommandHandler::decoder->split(command, ' ');
     for (size_t i = 1; i < commandChunks.size(); i++) { // commandChunks[0] is 'load'
         if (CommandHandler::decoder->loadFile(commandChunks[i])) {
             std::cout << "Loaded file '" + commandChunks[i] + "'...\n";

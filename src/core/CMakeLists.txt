@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
-project(MynicCore VERSION 1.0)
+project(Mynic VERSION 1.0)
 
 # 1. Collect all your source files
 file(GLOB_RECURSE SOURCES "*.cpp")
