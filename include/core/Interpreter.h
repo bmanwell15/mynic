@@ -70,7 +70,7 @@ class Interpreter {
         AST* ast;
         BitQueue bitQueue;
         std::shared_ptr<InterpretedPacket> rootNode;
-        std::unordered_map<std::string, std::string> defTypeAliases; // {newType, existingType}
+        // std::unordered_map<std::string, std::string> defTypeAliases; // {newType, existingType}
         std::vector<std::shared_ptr<ASTEnum>> enums;
         std::shared_ptr<ASTPrimitiveValueSettings> globalSettings;
         bool terminateSignal;

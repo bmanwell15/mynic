@@ -5,6 +5,7 @@ Loading Mynic File
 - All STD datatypes
 - typedef   (typedef uint16 header) // Now header is a datatype that can be used
 - Datafield settings (uint code {endianness: big, units: "m/s"})
+
 - include other files
 - enums
 - define    (define HEADER 0) // like enum, but for only one value. Would be useful for branch values & Array sizes

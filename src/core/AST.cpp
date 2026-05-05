@@ -5,6 +5,7 @@
 AST::AST(Mynic* myn) {
     masterIndex = 0;
     tokens = {};
+    typedefAliases = {};
     rootNode = std::make_shared<ASTNode>(ASTNode{NodeType::ROOT_NODE, {}});
     primitiveBitSizes = {
         {"bit", 1},
@@ -57,8 +58,9 @@ std::shared_ptr<ASTNode> AST::parseTokensToAST(const std::vector<Token>& inputTo
     rootNode->type = NodeType::ROOT_NODE;
     this->tokens = inputTokens;
 
-    for (masterIndex = 0; masterIndex < this->tokens.size(); masterIndex++)
+    for (masterIndex = 0; masterIndex < this->tokens.size(); masterIndex++) {
         parseField();
+    }
 
     return rootNode;
 }
@@ -312,10 +314,10 @@ std::shared_ptr<ASTField> AST::parseTypeDef() {
     }
 
     if (!isKnownType(typeDef.existingTypeName)) {
-        ErrorHandler::throwError("Unknown datatype in typedef: " + typeDef.existingTypeName, tokens, masterIndex - 1);
+        ErrorHandler::throwError("Unknown datatype in typedef: " + typeDef.existingTypeName, tokens, masterIndex - 2);
     }
 
-    interpreter->defTypeAliases[typeDef.newTypeName] = typeDef.existingTypeName;
+    typedefAliases[typeDef.newTypeName] = typeDef.existingTypeName;
 
     eatToken({SEMI_COLON, NEW_LINE});
     rootNode->properties[typeDef.newTypeName] = std::make_shared<ASTTypeDef>(typeDef);
@@ -326,6 +328,9 @@ std::shared_ptr<ASTField> AST::parseTypeDef() {
 std::shared_ptr<ASTField> AST::parsePrimitive() {
     auto field = std::make_shared<ASTPrimitiveValue>();
     field->datatype = eatToken(IDENTIFIER).value;
+
+    if (typedefAliases.find(field->datatype) != typedefAliases.end())
+        field->datatype = typedefAliases[field->datatype];
 
     if (isDynamicSizeType(field->datatype)) {
         size_t pos = field->datatype.find_first_of("0123456789");
@@ -356,14 +361,19 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
         if (tryEval.has_value()) {
             if (std::holds_alternative<uint64_t>(tryEval.value())) {
                 arr->length = std::get<uint64_t>(tryEval.value());
+                arr->dynamicLength = nullptr;
             } else if (std::holds_alternative<int64_t>(tryEval.value())) {
                 arr->length = static_cast<size_t>(std::get<int64_t>(tryEval.value()));
+                arr->dynamicLength = nullptr;
             } else if (std::holds_alternative<unsigned long>(tryEval.value())) {
                 arr->length = std::get<unsigned long>(tryEval.value());
+                arr->dynamicLength = nullptr;
             } else if (std::holds_alternative<long>(tryEval.value())) {
                 arr->length = static_cast<size_t>(std::get<long>(tryEval.value()));
+                arr->dynamicLength = nullptr;
             } else if (std::holds_alternative<double>(tryEval.value())) {
                 arr->length = static_cast<size_t>(std::get<double>(tryEval.value()));
+                arr->dynamicLength = nullptr;
             }
         }
         eatToken(CLOSE_SQUARE_BRACKET);
@@ -462,7 +472,7 @@ Value convertTokenValue(Token token) {
         case BOOL_LITERAL:
             return (token.value == "true");
     }
-    throw std::runtime_error("Invalid type in convertTokenValue()");
+    return 0;
 }
 
 std::shared_ptr<ASTEnumVariable> AST::parseEnumVarDefinition(ASTEnum* enumVar) {
@@ -505,6 +515,8 @@ std::shared_ptr<ASTEnum> AST::parseEnum() {
     ASTEnum enumVar;
     eatToken(IDENTIFIER); // Parse enum token
     enumVar.datatype = eatToken(IDENTIFIER).value;
+    if (typedefAliases.find(enumVar.datatype) != typedefAliases.end())
+        enumVar.datatype = typedefAliases[enumVar.datatype];
     enumVar.type = NodeType::ENUM;
 
     if (enumVar.datatype.substr(0, 4) != "uint")

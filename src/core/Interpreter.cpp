@@ -1,7 +1,6 @@
 #include "Interpreter.h"
 
 Interpreter::Interpreter() {
-    defTypeAliases = {};
     decodedPacket = nullptr;
     astTree = nullptr;
     terminateSignal = false;
@@ -262,17 +261,11 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
 Value Interpreter::interpretValue(ASTPrimitiveValue& field) {
     uint64_t bits = bitQueue.pop(field.sizeInBits);
     isEndOfStream = !bitQueue.size();
-    std::string datatype;
-
-    if (defTypeAliases.find(field.datatype) != defTypeAliases.end()) // If using deftype alias
-        datatype = defTypeAliases[field.datatype];
-    else
-        datatype = field.datatype;
-    
+    std::string datatype = field.datatype;
     bits = enforceEndian(bits, field.sizeInBits, field.settings && field.settings->flags.endianBig == false);
 
     for (const auto& enumDef : enums) {
-        if (datatype == enumDef->name) {
+        if (field.datatype == enumDef->name) {
             if (enumDef->datatype.substr(0, 4) != "uint") {
                 throwWarning(InterpreterWarningCodes::ENUM_TYPE_NOT_INT, "Enum '" + datatype + "' must have uint type.");
                 return 0;
@@ -644,7 +637,8 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
     if (field->type == NodeType::PRIMITIVE) {
         auto primField = std::static_pointer_cast<ASTPrimitiveValue>(field);
 
-        if (astTree->properties[primField->datatype]) { // If segment exists
+        if (astTree->properties[primField->datatype] && 
+            astTree->properties[primField->datatype]->type == NodeType::SEGMENT) { // If segment exists
             return interpretField(astTree->properties[primField->datatype]);
         }
 
@@ -687,7 +681,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         interpretedArray.name = arrayDef->elementSchema->name;
         interpretedArray.type = NodeType::ARRAY;
 
-        if (arrayDef->dynamicLength) {
+        if (arrayDef->dynamicLength != nullptr) {
             auto parsedVal = evaluateASTExpression(nullptr, arrayDef->dynamicLength);
             if (std::holds_alternative<uint64_t>(parsedVal)) {
                 arrayDef->length = std::get<uint64_t>(parsedVal);
@@ -699,9 +693,10 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
                 arrayDef->length = static_cast<size_t>(std::get<long>(parsedVal));
             } else if (std::holds_alternative<double>(parsedVal)) {
                 arrayDef->length = static_cast<size_t>(std::get<double>(parsedVal));
+            } else {
+                throwWarning(InterpreterWarningCodes::ARRAY_LENGTH_NOT_INT, "Dynamic array length must be a numeric value, not " + std::string(parsedVal.index() ? "complex" : "string"));
+                return std::make_shared<InterpretedArray>(interpretedArray);
             }
-            throwWarning(InterpreterWarningCodes::ARRAY_LENGTH_NOT_INT, "Dynamic array length must be a numeric value, not " + std::string(parsedVal.index() ? "complex" : "string"));
-            return nullptr;
         }
 
         std::shared_ptr<ASTPrimitiveValue> newElementSchema;

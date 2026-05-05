@@ -36,6 +36,9 @@ target_include_directories(mynic_cli PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/cli
 )
 
+target_compile_options(mynic_cli PRIVATE -fsanitize=address -g -O1 -fno-omit-frame-pointer)
+target_link_options(mynic_cli PRIVATE -fsanitize=address)
+
 # 3. Installation logic (Optional but kept for your structure)
 # install(TARGETS mynic_cli DESTINATION bin) # CLI apps usually go in 'bin', not 'lib'
 # install(DIRECTORY ../core/ DESTINATION include FILES_MATCHING PATTERN "*.h")

@@ -8,6 +8,7 @@
 
 //import "./examples/imported.myn";
 
+typedef uint numbut;
 
 enum uint8 EnumName {
     ZERO = 0,

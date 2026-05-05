@@ -198,6 +198,7 @@ class AST {
         Interpreter* interpreter;
         std::unordered_map<std::string, size_t> primitiveBitSizes;
         std::unordered_map<std::string, Value> definedVariables; // <varName, varValue> Stored in AST because AST will replace variables with Values during compilation
+        std::unordered_map<std::string, std::string> typedefAliases;
         inline static const std::unordered_set<std::string> MYNIC_KEYWORDS = {"TO_END", "END_OF_STREAM", "EOF"};
         inline static const std::unordered_set<std::string> MYNIC_FUNCTIONS = {"TERMINATE_IF"};
 

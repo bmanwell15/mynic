@@ -103,11 +103,7 @@ std::vector<uint8_t> Mynic::bitsToBytes(const std::string& bitStr) {
 }
 
 void Mynic::printSchema() {
-    for (const auto& [name, packet] : rootNode->properties) {
-        if (packet && packet->type == NodeType::PACKET) {
-            adapters::objects::printSchema(rootNode);
-        }
-    }
+    adapters::objects::printSchema(rootNode);
 }
 
 void Mynic::printPacket(const std::string& packetName) {

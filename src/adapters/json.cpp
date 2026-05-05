@@ -35,9 +35,9 @@ void encode(std::stringstream& ss, const std::shared_ptr<InterpretedField>& fiel
         auto packetField = std::static_pointer_cast<InterpretedPacket>(field);
         ss << indentStr << '\"' << packetField->name << "\": {\n";
         std::vector<std::string> subJsons;
-        for (const auto& subField : packetField->fields) {
+        for (const auto& subfield : packetField->fields) {
             std::stringstream subSs;
-            encode(subSs, subField, indent + 1);
+            encode(subSs, subfield, indent + 1);
             subJsons.push_back(subSs.str());
         }
         for (size_t i = 0; i < subJsons.size(); i++) {

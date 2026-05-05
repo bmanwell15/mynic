@@ -15,12 +15,10 @@ int main(int argc, char* argv[]) {
     std::string possibleFileName = argv[1];
 
     auto startTime = std::chrono::high_resolution_clock::now();
-    CommandHandler::decoder->loadFile(possibleFileName);
+    CommandHandler::runCommand("load " + possibleFileName);
     auto endTime =  std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
     std::cout << "Loaded definition file in " << duration << " ms\n" << std::endl;
-
-    CommandHandler::decoder->printSchema();
 
     while (true) {
         std::cout << "mynic > ";
@@ -29,6 +27,5 @@ int main(int argc, char* argv[]) {
         if (inputLine == "exit" || inputLine == "quit") break;
         CommandHandler::runCommand(inputLine);
     }
-    std::cout << "bye\n";
     return 0;
 }

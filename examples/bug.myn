@@ -1,0 +1,10 @@
+
+import "./examples/imported.myn"
+
+packet test {
+    uint8 num {
+        units: "m/s",
+        endianness: "little"
+    }
+    uint8 before;
+}
