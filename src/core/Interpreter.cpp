@@ -27,7 +27,7 @@ DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes,
             auto packet = std::static_pointer_cast<ASTPacket>(field);
             rootNode = std::make_shared<InterpretedPacket>();
             decodedPacket->rootField = rootNode;
-            decodedPacket->rootField = interpretPacket(*packet);
+            decodedPacket->rootField = interpretPacket(*packet, decodedPacket->rootField);
             decodedPacket->rootField->settings = packet->defaultSettings;
             decodedPacket->rootField->name = packet->name;
             decodedPacket->rootField->type = NodeType::PACKET;
@@ -203,7 +203,7 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
         std::string enumName = varName.substr(0, foundPeriodIndex); // Name of the variable that is assumed to have been previously parsed
         std::string attributeName = varName.substr(foundPeriodIndex + 1); // Attribute of that enum based on the parsed value
         
-        auto enumField = findField(field, enumName);
+        auto enumField = findField(field, enumName); // Find the already parsed enum primitive interpretation
         if (!enumField || enumField->type != NodeType::PRIMITIVE) return std::nullopt;
         
         auto primField = std::static_pointer_cast<InterpretedPrimitiveValue>(enumField);
@@ -321,9 +321,9 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field) {
         return Value{static_cast<bool>(bits)};
     }
 
-    if (datatype == "char") {
-        return Value{std::string(1, static_cast<char>(bits & 0xFF))};
-    }
+    // if (datatype == "char") {
+    //     return Value{std::string(1, static_cast<char>(bits & 0xFF))};
+    // }
 
     // Arbitrary uintX
     if (datatype.starts_with("uint")) {
@@ -618,10 +618,10 @@ void Interpreter::enforcePostInterpretationSettings(std::shared_ptr<InterpretedP
 }
 
 
-std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket& packetDef) {
-    auto packet = std::make_shared<InterpretedPacket>();
+std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket& packetDef, std::shared_ptr<InterpretedPacket> pRootNode) {
+    auto packet = pRootNode == nullptr ? std::make_shared<InterpretedPacket>() : pRootNode;
     packet->name = packetDef.name;
-    packet->type = packetDef.type;
+    packet->type = NodeType::PACKET;
     for (const auto& fieldPtr : packetDef.fields) {
         if (terminateSignal || (packet->settings && packet->settings->flags.packetShouldReturn)) {
             return packet;

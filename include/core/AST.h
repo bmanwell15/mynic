@@ -218,6 +218,8 @@ class AST {
         Token eatToken(std::initializer_list<TokenType> types);
         void eatOptionalToken(std::initializer_list<TokenType> types);
         void skipWhiteSpace(bool includeCommas=false, bool includeSemiColons=false);
+        Value convertTokenValue(Token token);
+
         size_t parseVariableCall();
 
         // Parsing functions

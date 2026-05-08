@@ -13,11 +13,15 @@ Token Lexer::createToken(const std::string value, const TokenType type, const bl
     return t;
 }
 
+Token Lexer::createToken(const char value, const TokenType type, const blockDepth_t blockDepth, size_t lineNumber) {
+    return createToken(std::string(1, value), type, blockDepth, lineNumber);
+}
+
 void Lexer::printToken(const Token t) {
     std::cout << "{value='" << t.value << "', type=" << t.type;
     std::cout << ", depth=" << t.blockDepth;
     std::cout << ", line=" << t.lineNumber;
-     std::cout << ", file='" << Lexer::fileNames[t.fileIndex] << "'";
+    std::cout << ", file='" << Lexer::fileNames[t.fileIndex] << "'";
     std::cout << "}" << std::endl;
 }
 
@@ -76,59 +80,59 @@ std::vector<Token> Lexer::tokenize(const std::string content) {
             tokens.push_back(createToken(gate, ttype, blockDepth, lineNumber)); 
         } else if ((ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '%') && content[i + 1] != '=') { // HANDLE BINARY OPERATORS
             ttype = BINARY_OPERATOR;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber));
         } else if (ch == '=' && content[i + 1] != '=') { // Make sure it's not double equals '=='
             ttype = EQUALS;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber));
         } else if ((ch == '=' || ch == '>' || ch == '<' || ch == '!') && content[i + 1] == '=') { // ALL conditions that are 2 chars long (<=, >=, ==, !=)
             ttype = CONDITION_OPERATOR;
             std::string doubleEquals = std::string(1, ch) + std::string(1, content[++i]);
             tokens.push_back(createToken(doubleEquals, ttype, blockDepth, lineNumber));
         } else if (ch == '<' || ch == '>') { // ALL conditions that are only 1 char long (>, <)
             ttype = CONDITION_OPERATOR;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber));
         } else if (ch == ';') {
             ttype = SEMI_COLON;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber));
         } else if (ch == ':') {
             ttype = COLON;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber));
         } else if (ch == '(') {
             ttype = OPEN_PAREN;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber));
         } else if (ch == '\n') {
             ttype = NEW_LINE;
             lineNumber++;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber));
         } else if (ch == ')') {
             ttype = CLOSE_PAREN;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber));
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber));
         } else if (ch == '{') {
             blockDepth++;
             ttype = OPEN_BRACKET;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber)); 
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber)); 
         } else if (ch == '}') {
             blockDepth--;
             ttype = CLOSE_BRACKET;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber)); 
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber)); 
         } else if (ch == '[') {
             ttype = OPEN_SQUARE_BRACKET;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber)); 
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber)); 
         } else if (ch == ']') {
             ttype = CLOSE_SQUARE_BRACKET;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber)); 
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber)); 
         } else if (ch == ',') {
             ttype = COMMA;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber)); 
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber)); 
         } else if (ch == '.') {
             ttype = PERIOD;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber)); 
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber)); 
         } else if (ch == '*') {
             ttype = ASTERICT;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber)); 
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber)); 
         } else if (ch == '!') {
             ttype = EXCLAMATION_POINT;
-            tokens.push_back(createToken(std::string(1, ch), ttype, blockDepth, lineNumber)); 
+            tokens.push_back(createToken(ch, ttype, blockDepth, lineNumber)); 
         } else if (content.substr(i, 4) == "true") {
             ttype = BOOL_LITERAL;
             tokens.push_back(createToken(content.substr(i, 4), ttype, blockDepth, lineNumber));
@@ -146,6 +150,7 @@ std::vector<Token> Lexer::tokenize(const std::string content) {
                 hexValue += ch;
                 ch = content[++i];
             }
+            i--;
 
             unsigned long long asInt = std::stoull(hexValue, nullptr, 16);
             tokens.push_back(createToken(std::to_string(asInt), ttype, blockDepth, lineNumber));

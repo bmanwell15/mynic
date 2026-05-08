@@ -87,7 +87,7 @@ class Interpreter {
         std::shared_ptr<ASTNode> astTree;
 
         std::shared_ptr<InterpretedField> findField(const std::shared_ptr<InterpretedField>& field, const std::string& name);
-        std::shared_ptr<InterpretedPacket> interpretPacket(const ASTPacket& packetDef);
+        std::shared_ptr<InterpretedPacket> interpretPacket(const ASTPacket& packetDef, std::shared_ptr<InterpretedPacket> rootNode=nullptr);
         std::shared_ptr<InterpretedField> interpretField(std::shared_ptr<ASTField> field);
         Value interpretValue(ASTPrimitiveValue& field);
         std::optional<Value> getParsedValue(const std::shared_ptr<InterpretedField>& field, const std::string& varName);

@@ -66,7 +66,7 @@ std::shared_ptr<ASTNode> AST::parseTokensToAST(const std::vector<Token>& inputTo
 }
 
 Token AST::eatToken(std::initializer_list<TokenType> types) {
-    if (!(std::find(types.begin(), types.end(), NEW_LINE) != types.end()))
+    if (std::find(types.begin(), types.end(), NEW_LINE) == types.end())
         skipWhiteSpace();
 
     if (masterIndex >= tokens.size() - 1)
@@ -91,7 +91,7 @@ Token AST::eatToken(std::initializer_list<TokenType> types) {
 }
 
 void AST::eatOptionalToken(std::initializer_list<TokenType> types) {
-    if (!(std::find(types.begin(), types.end(), NEW_LINE) != types.end()))
+    if (std::find(types.begin(), types.end(), NEW_LINE) == types.end())
         skipWhiteSpace();
 
     if (masterIndex >= tokens.size() - 1)
@@ -198,70 +198,41 @@ std::shared_ptr<ASTField> AST::parseField() {
         return std::make_shared<ASTField>();
     }
 
-    if (token.type == IDENTIFIER && MYNIC_KEYWORDS.contains(token.value)) {
+    // if (token.type == IDENTIFIER && MYNIC_KEYWORDS.contains(token.value)) {
 
-    }
+    // }
 
-    if (token.type == IDENTIFIER && tokens[masterIndex + 1].type == OPEN_PAREN) {
-        return parseVoidFunctionCall();
-    }
-    
-    if (token.type == IDENTIFIER && token.value == "packet") {
-        std::shared_ptr<ASTPacket> packet = parsePacket();
-        rootNode->properties[packet->name] = packet;
-        return packet;
-    }
-
-    if (token.type == IDENTIFIER && token.value == "segment") {
-        bool isLambdaSegment = (currentPacket != nullptr);
-        std::shared_ptr<ASTPacket> segment = parsePacket();
-        segment->type = NodeType::SEGMENT;
-        if (!isLambdaSegment)
-            rootNode->properties[segment->name] = segment;
-        return segment;
-    }
-
-    if (token.type == IDENTIFIER && token.value == "typedef") {
-        return parseTypeDef();
-    }
-
-    if (token.type == IDENTIFIER && token.value == "enum") {
-        std::shared_ptr<ASTEnum> enumDef = parseEnum();
-        interpreter->enums.push_back(enumDef);
-        return enumDef;
-    }
-
-    if (token.type == IDENTIFIER && token.value == "union") {
-        return parseUnion();
+    if (token.type == IDENTIFIER) {
+        if (token.value == "enum") {
+            std::shared_ptr<ASTEnum> enumDef = parseEnum();
+            interpreter->enums.push_back(enumDef);
+            return enumDef;
+        }
+        if (token.value == "bitfield") return parseBitfield();
+        if (token.value == "union") return parseUnion();
+        if (tokens[masterIndex + 1].type == OPEN_PAREN) return parseVoidFunctionCall();
+        if (token.value == "default") return parseDefault();
+        if (token.value == "segment") {
+            bool isLambdaSegment = (currentPacket != nullptr);
+            std::shared_ptr<ASTPacket> segment = parsePacket();
+            segment->type = NodeType::SEGMENT;
+            if (!isLambdaSegment)
+                rootNode->properties[segment->name] = segment;
+            return segment;
+        }
+        if (token.value == "typedef") return parseTypeDef();
+        if (token.value == "define") return parseDefine();
+        if (token.value == "branch") return parseBranch();
+        if (token.value == "switch") return parseSwitch();
+        if (token.value == "import") return parseImport();
+        if (token.value == "packet") {
+            std::shared_ptr<ASTPacket> packet = parsePacket();
+            rootNode->properties[packet->name] = packet;
+            return packet;
+        }
+        return parsePrimitive(); // Assume primitive
     }
 
-    if (token.type == IDENTIFIER && token.value == "bitfield") {
-        return parseBitfield();
-    }
-
-    if (token.type == IDENTIFIER && token.value == "branch") {
-        return parseBranch();
-    }
-
-    if (token.type == IDENTIFIER && token.value == "switch") {
-        return parseSwitch();
-    }
-
-    if (token.type == IDENTIFIER && token.value == "define") {
-        return parseDefine();
-    }
-
-    if (token.type == IDENTIFIER && token.value == "import") {
-        return parseImport();
-    }
-
-    if (token.type == IDENTIFIER && token.value == "default") {
-        return parseDefault();
-    }
-
-    if (token.type == IDENTIFIER) { // Assume primitive for now
-        return parsePrimitive();
-    }
     return std::make_shared<ASTField>();
 }
 
@@ -412,10 +383,19 @@ std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {
         Token settingToken = eatToken(IDENTIFIER);
         eatToken(COLON);
         if (settingToken.value == "endianness") {
-            Token endianValueToken = eatToken(STRING_LITERAL);
-            if (endianValueToken.value == "\"big\"") {
+            Token endianValueToken = eatToken({STRING_LITERAL, IDENTIFIER});
+            std::string endianValue;
+            auto definedVarIt = definedVariables.find(endianValueToken.value);
+            if (definedVarIt != definedVariables.end() &&
+                std::holds_alternative<std::string>(definedVarIt->second)) {
+                endianValue = std::get<std::string>(definedVarIt->second);
+            } else {
+                endianValue = endianValueToken.value;
+            }
+
+            if (endianValue == "\"big\"") {
                 settings->flags.endianBig = true;
-            } else if (endianValueToken.value == "\"little\"") {
+            } else if (endianValue == "\"little\"") {
                 settings->flags.endianBig = false;
             } else {
                 ErrorHandler::throwError("Invalid endian setting: " + endianValueToken.value, tokens, masterIndex - 1);
@@ -461,7 +441,7 @@ std::shared_ptr<ASTField> AST::parseImport() {
     return std::make_shared<ASTField>(ASTField{});
 }
 
-Value convertTokenValue(Token token) {
+Value AST::convertTokenValue(Token token) {
     switch (token.type) {
         case INT_LITERAL:
             return (uint64_t)(std::stoull(token.value));
@@ -471,6 +451,14 @@ Value convertTokenValue(Token token) {
             return token.value;
         case BOOL_LITERAL:
             return (token.value == "true");
+        case IDENTIFIER: {
+            std::string varName;
+            auto definedVarIt = definedVariables.find(token.value);
+            if (definedVarIt != definedVariables.end()) { // Check if in defined variables
+                return definedVariables[token.value];
+            }
+            ErrorHandler::throwError("Expected defined variable but instead got '" + token.value + "'", tokens, masterIndex);
+        }
     }
     return 0;
 }
@@ -543,6 +531,13 @@ std::shared_ptr<ASTEnum> AST::parseEnum() {
 std::shared_ptr<ASTField> AST::parseDefine() {
     eatToken(IDENTIFIER); // Eat define token
     std::string varName = eatToken(IDENTIFIER).value;
+    if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == STRING_LITERAL) {
+        definedVariables[varName] = eatToken(STRING_LITERAL).value;
+        return std::make_shared<ASTField>();
+    } else if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == BOOL_LITERAL) {
+        definedVariables[varName] = eatToken(BOOL_LITERAL).value;
+        return std::make_shared<ASTField>();
+    }
     auto varExpression = parseLogicalOr();
     auto varValueOption = interpreter->tryEvaluateASTExpression(varExpression);
     if (varValueOption.has_value()) {
@@ -670,7 +665,7 @@ std::shared_ptr<ASTBranch> AST::parseBranch() {
         } else {
             condition->conditionOperator = ConditionOperators::EQUAL;
         }
-        condition->parsedCheckValue = convertTokenValue(eatToken({BOOL_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL}));
+        condition->parsedCheckValue = convertTokenValue(eatToken({BOOL_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL, IDENTIFIER}));
         branch.destinationsAndConditions.push_back(std::make_pair(destination, condition));
         eatOptionalToken({SEMI_COLON, NEW_LINE});
     }
@@ -682,6 +677,14 @@ std::shared_ptr<ASTSwitch> AST::parseSwitch() {
     ASTSwitch switchDef;
     switchDef.type = NodeType::SWITCH;
     switchDef.variableName = eatToken(IDENTIFIER).value;
+
+    std::string varName;
+    auto definedVarIt = definedVariables.find(switchDef.variableName);
+    if (definedVarIt != definedVariables.end() &&
+        std::holds_alternative<std::string>(definedVarIt->second)) { // Check if in defined variables
+        switchDef.variableName = std::get<std::string>(definedVarIt->second);
+    }
+
     eatToken(OPEN_BRACKET);
     blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
     while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {

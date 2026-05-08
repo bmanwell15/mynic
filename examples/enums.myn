@@ -24,7 +24,7 @@ enum uint16 ComplexEnum {
     EVENT_TEN       {attr1: 12, attr2: 0}
 }
 
-packet BasicPacket {
+packet ep {
     BasicEnum basicEnum;
     ComplexEnum complexEnum;
     byte arrByEnum[complexEnum.attr2];

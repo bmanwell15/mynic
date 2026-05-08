@@ -1,10 +1,19 @@
 
-import "./examples/imported.myn"
+define VAR 1
+define a 0x01
+define ENDIAN "big"
+define DEBUG true
 
 packet test {
-    uint8 num {
-        units: "m/s",
-        endianness: "little"
+    //uint16 num {
+    //    units: "m/s",
+    //    endianness: ENDIAN
+    //}
+   // bytes arr[VAR + 1];
+   byte b
+    branch bool {
+        segment seg1 {
+            uint8 field1;
+        } if DEBUG;
     }
-    uint8 before;
 }

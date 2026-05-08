@@ -50,6 +50,7 @@ class Lexer {
         inline static std::vector<std::string> fileNames; // Holds all of the file names that have been tokenized so far;
 
         static std::vector<Token> tokenize(const std::string content); // Converts the file content into its tokens. Returns an array of those tokens
+        static Token createToken(const char value, const TokenType type, const blockDepth_t blockDepth, size_t lineNumber);
         static Token createToken(const std::string value, const TokenType type, const blockDepth_t blockDepth, size_t lineNumber); // Creates and returns a token object given the specified values
         static void printToken(const Token t); // Prints a token to the terminal
         static void skipWhiteSpace(const std::vector<Token>& tokens, size_t& i, bool includeCommas=false, bool includeSemiColons=false);
