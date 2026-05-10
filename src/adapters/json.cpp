@@ -122,12 +122,15 @@ void encodeWarnings(std::stringstream& ss, const DecodedPacket& decodedPacket) {
 }
 
 std::string adapters::json::encode(const DecodedPacket& decodedPacket) {
+    if (decodedPacket.rootField == nullptr)
+        return "Packet '" + decodedPacket.packetName + "' not found.";
+    
     std::stringstream ss;
     ss << "{\n";
-    if (decodedPacket.rootField->settings->flags.includePacketName)
+    if (decodedPacket.rootField->settings && decodedPacket.rootField->settings->flags.includePacketName)
         ss << "   \"Packet Name\": \"" << decodedPacket.packetName << "\",\n";
 
-    if (decodedPacket.rootField->settings->flags.includeRawBytes) {
+    if (decodedPacket.rootField->settings && decodedPacket.rootField->settings->flags.includeRawBytes) {
         ss << "   \"Raw Bytes\": \"";
         for (const auto& byte : decodedPacket.rawBytes) {
             ss << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(byte);
@@ -135,7 +138,7 @@ std::string adapters::json::encode(const DecodedPacket& decodedPacket) {
         ss << std::dec << "\",\n";
     }
     
-    if (decodedPacket.rootField->settings->flags.includeTimestamp) {
+    if (decodedPacket.rootField->settings && decodedPacket.rootField->settings->flags.includeTimestamp) {
         auto now = std::chrono::system_clock::now();
         auto now_ms = std::chrono::floor<std::chrono::milliseconds>(now);
         std::string timestamp = std::format("{:%F %T}", now_ms); // %F = YYYY-MM-DD, %T = HH:MM:SS.mmm

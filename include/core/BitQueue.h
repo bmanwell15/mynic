@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <cstdint>
+#include <optional>
 
 /** BitQueue Class
  * This class represents a stream of bits which can be popped from the stream to be interpreted.
@@ -52,22 +53,23 @@ public:
         return data_.size() * 8 - bitPos_;
     }
 
-    uint64_t pop(size_t n) {
+    std::optional<uint64_t> pop(size_t n) {
         if (n > 64) n = 64;
         return readBits(n);
     }
 
-    uint64_t peek(size_t n) const {
-        if (n > 64) n = 64;
-        size_t savedPos = bitPos_;
-        auto val = const_cast<BitQueue*>(this)->readBits(n);
-        const_cast<BitQueue*>(this)->bitPos_ = savedPos;
-        return val;
-    }
+    // uint64_t peek(size_t n) const {
+    //     if (n > 64) n = 64;
+    //     size_t savedPos = bitPos_;
+    //     auto val = const_cast<BitQueue*>(this)->readBits(n);
+    //     const_cast<BitQueue*>(this)->bitPos_ = savedPos;
+    //     return val;
+    // }
 
     void rewind(size_t bits) {
         if (bits > bitPos_) {
-            throw std::out_of_range("Rewind past beginning of BitQueue");
+            bitPos_ = 0;
+            return;
         }
         bitPos_ -= bits;
     }
@@ -81,9 +83,9 @@ public:
     }
 
 private:
-    uint64_t readBits(size_t n) {
+    std::optional<uint64_t> readBits(size_t n) {
         if (n == 0 || n > 64 || bitPos_ + n > data_.size() * 8)
-            throw std::out_of_range("Invalid pop");
+            return std::nullopt;
 
         uint64_t result = 0;
         size_t remaining = n;

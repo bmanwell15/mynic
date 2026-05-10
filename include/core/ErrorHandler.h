@@ -25,7 +25,8 @@ enum class InterpreterWarningCodes {
     ARRAY_LENGTH_NOT_INT,
     WRONG_NUMBER_OF_PARAMETERS,
     VARIABLE_NOT_ARITHMETIC,
-    BIT_QUEUE_INDEX_OUT_OF_BOUNDS
+    BIT_QUEUE_INDEX_OUT_OF_BOUNDS,
+    BIT_QUEUE_EMPTY
 };
 
 struct InterpreterWarning {

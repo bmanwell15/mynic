@@ -1,19 +1,12 @@
 
-define VAR 1
-define a 0x01
-define ENDIAN "big"
-define DEBUG true
+
+segment SEG1 {byte b;}
+segment SEG2 {bool bo;}
 
 packet test {
-    //uint16 num {
-    //    units: "m/s",
-    //    endianness: ENDIAN
-    //}
-   // bytes arr[VAR + 1];
-   byte b
-    branch bool {
-        segment seg1 {
-            uint8 field1;
-        } if DEBUG;
+    uint8 num;
+    switch num {
+        SEG1 if 0;
+        SEG2 if 1;
     }
 }

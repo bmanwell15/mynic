@@ -36,7 +36,17 @@ DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes,
         }
     }
     throwWarning(InterpreterWarningCodes::PACKET_NOT_FOUND, "Packet definition for " + packetName + " not found.");
+    decodedPacket->rootField = nullptr;
     return *decodedPacket;
+}
+
+uint64_t Interpreter::popBits(size_t bitNum) {
+    auto bits = bitQueue.pop(bitNum);
+    if (bits.has_value()) 
+        return bits.value();
+    
+    throwWarning(InterpreterWarningCodes::BIT_QUEUE_EMPTY, "Attepted to pop bits when the bit stream is empty.");
+    return 0ULL;
 }
 
 uint64_t enforceEndian(uint64_t value, uint8_t  bitSize, bool isLittle){
@@ -259,7 +269,7 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
 }
 
 Value Interpreter::interpretValue(ASTPrimitiveValue& field) {
-    uint64_t bits = bitQueue.pop(field.sizeInBits);
+    uint64_t bits = popBits(field.sizeInBits);
     isEndOfStream = !bitQueue.size();
     std::string datatype = field.datatype;
     bits = enforceEndian(bits, field.sizeInBits, field.settings && field.settings->flags.endianBig == false);
@@ -289,7 +299,7 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field) {
         std::string out;
         while (ch != '\0') {
             out += ch;
-            ch = bitQueue.pop(8);
+            ch = popBits(8);
         }
         return Value{out};
     }
@@ -326,13 +336,21 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field) {
     // }
 
     // Arbitrary uintX
-    if (datatype.starts_with("uint")) {
+    if (datatype.starts_with("uint") || datatype == "ushort" || datatype == "ulong") {
         return Value{bits};
     }
 
     // Optional: arbitrary intX later
-    if (datatype.starts_with("int")) {
-        int bitsNum = std::stoi(datatype.substr(3));
+    if (datatype.starts_with("int") || datatype == "short" || datatype == "long") {
+        int bitsNum = 0;
+        if (datatype == "short")
+            bitsNum = 16;
+        else if (datatype == "int")
+            bitsNum = 32;
+        else if (datatype == "long")
+            bitsNum = 64;
+        else
+            std::stoi(datatype.substr(3));
 
         // sign extend
         if (bits & (1ULL << (bitsNum - 1))) {
@@ -406,7 +424,7 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field) {
     if (datatype == "ipv6Address" || datatype == "ipAddress128") {
         std::stringstream ss;
         const uint8_t bytesNum = 16;
-        ss << std::hex << std::uppercase << std::setfill('0') << std::setw(bytesNum) << bits << bitQueue.pop(64);
+        ss << std::hex << std::uppercase << std::setfill('0') << std::setw(bytesNum) << bits << popBits(64);
         std::string asString = ss.str();
         for (int i = 4; i < asString.size(); i += 5) {
             asString.insert(i, ":");
@@ -670,7 +688,7 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
             interpretedUnionfield.subfields.push_back(interpretedSubfield);
             bitQueue.rewind(unionfieldDef->sizeInBits); // Rewind to interpret again
         }
-        bitQueue.pop(unionfieldDef->sizeInBits); // Move past union
+        popBits(unionfieldDef->sizeInBits); // Move past union
         return std::make_shared<InterpretedUnionfield>(interpretedUnionfield);
     } else if (field->type == NodeType::SEGMENT || field->type == NodeType::PACKET) {
         auto segment = std::static_pointer_cast<ASTPacket>(field);
@@ -727,16 +745,18 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         return std::make_shared<InterpretedArray>(interpretedArray);
     } else if (field->type == NodeType::BRANCH) {
         auto branchDef = std::static_pointer_cast<ASTBranch>(field);
-        Value parsedPrimitiveVal = interpretValue(branchDef->parseAs);
+        std::cout << branchDef->parseAs.sizeInBits << std::endl;
+        auto primField = interpretField(std::make_shared<ASTPrimitiveValue>(branchDef->parseAs));
+        Value parsedPrimitiveVal = std::static_pointer_cast<InterpretedPrimitiveValue>(primField)->value;
         bitQueue.rewind(branchDef->parseAs.sizeInBits);
         for (const auto& nameConditionPair : branchDef->destinationsAndConditions) {
             if (
-                nameConditionPair.second->conditionOperator == ConditionOperators::EQUAL && parsedPrimitiveVal == nameConditionPair.second->parsedCheckValue ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::NOT_EQUAL && parsedPrimitiveVal != nameConditionPair.second->parsedCheckValue ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_THAN && parsedPrimitiveVal < nameConditionPair.second->parsedCheckValue ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_EQUAL_THAN && parsedPrimitiveVal <= nameConditionPair.second->parsedCheckValue ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_THAN && parsedPrimitiveVal > nameConditionPair.second->parsedCheckValue ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_EQUAL_THAN && parsedPrimitiveVal >= nameConditionPair.second->parsedCheckValue
+                nameConditionPair.second->conditionOperator == ConditionOperators::EQUAL && std::get<uint64_t>(evaluateBinaryOp("==", parsedPrimitiveVal, nameConditionPair.second->parsedCheckValue)) ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::NOT_EQUAL && std::get<uint64_t>(evaluateBinaryOp("!=", parsedPrimitiveVal, nameConditionPair.second->parsedCheckValue)) ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_THAN && std::get<uint64_t>(evaluateBinaryOp("<", parsedPrimitiveVal, nameConditionPair.second->parsedCheckValue)) ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_EQUAL_THAN && std::get<uint64_t>(evaluateBinaryOp("<=", parsedPrimitiveVal, nameConditionPair.second->parsedCheckValue)) ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_THAN && std::get<uint64_t>(evaluateBinaryOp(">", parsedPrimitiveVal, nameConditionPair.second->parsedCheckValue)) ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_EQUAL_THAN && std::get<uint64_t>(evaluateBinaryOp(">=", parsedPrimitiveVal, nameConditionPair.second->parsedCheckValue))
             ) {
                 return interpretField(nameConditionPair.first);
             }
@@ -755,12 +775,12 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         Value variableVal = variableValOpt.value();
         for (const auto& nameConditionPair : switchDef->destinationsAndConditions) {
             if (
-                nameConditionPair.second->conditionOperator == ConditionOperators::EQUAL && variableVal == nameConditionPair.second->parsedCheckValue ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::NOT_EQUAL && variableVal != nameConditionPair.second->parsedCheckValue ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_THAN && variableVal < nameConditionPair.second->parsedCheckValue ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_EQUAL_THAN && variableVal <= nameConditionPair.second->parsedCheckValue ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_THAN && variableVal > nameConditionPair.second->parsedCheckValue ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_EQUAL_THAN && variableVal >= nameConditionPair.second->parsedCheckValue
+                nameConditionPair.second->conditionOperator == ConditionOperators::EQUAL && std::get<uint64_t>(evaluateBinaryOp("==", variableVal, nameConditionPair.second->parsedCheckValue)) ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::NOT_EQUAL && std::get<uint64_t>(evaluateBinaryOp("!=", variableVal, nameConditionPair.second->parsedCheckValue)) ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_THAN && std::get<uint64_t>(evaluateBinaryOp("<", variableVal, nameConditionPair.second->parsedCheckValue)) ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_EQUAL_THAN && std::get<uint64_t>(evaluateBinaryOp("<=", variableVal, nameConditionPair.second->parsedCheckValue)) ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_THAN && std::get<uint64_t>(evaluateBinaryOp(">", variableVal, nameConditionPair.second->parsedCheckValue)) ||
+                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_EQUAL_THAN && std::get<uint64_t>(evaluateBinaryOp(">=", variableVal, nameConditionPair.second->parsedCheckValue))
             ) {
                 return interpretField(nameConditionPair.first);
             }

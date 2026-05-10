@@ -5,7 +5,7 @@ std::string CommandHandler::exportFilePath;
 
 void CommandHandler::runCommand(std::string command) {
     auto commandTokens = Lexer::tokenize(command);
-    if (commandTokens[0].value == "interpret" || commandTokens[0].type == OPEN_PAREN) return CommandHandler::interpret(commandTokens);
+    if (commandTokens[0].value == "interpret") return CommandHandler::interpret(command);
     if (commandTokens[0].value == "version") return CommandHandler::version();
     if (commandTokens[0].value == "refresh") return CommandHandler::refresh();
     if (commandTokens[0].value == "reset") return CommandHandler::reset();
@@ -14,24 +14,25 @@ void CommandHandler::runCommand(std::string command) {
     std::cout << "Command '" + commandTokens[0].value + "' not found.\n";
 }
 
-void CommandHandler::interpret(std::vector<Token> commandTokens) {
-    if (commandTokens.size() < 4) {
+void CommandHandler::interpret(std::string command) {
+    auto commandChunks = CommandHandler::decoder->split(command, ' ');
+    if (commandChunks.size() < 4) {
         std::cout << "Invalid Command: Command missing parameters.\n";
         return;
     }
-    std::string byteStr = commandTokens[1].value;
-    if (commandTokens[2].value != "as" && commandTokens[2].type != COMMA) {
-        std::cout << "Expected keyword 'as' or comma. Instead recieved '" + commandTokens[2].value + "'\n";
+    std::string byteStr = commandChunks[1];
+    if (commandChunks[2] != "as") {
+        std::cout << "Expected keyword 'as' or comma. Instead recieved '" + commandChunks[2] + "'\n";
         return;
     }
     
-    std::string packetName = commandTokens[3].value;
+    std::string packetName = commandChunks[3];
     auto startTime = std::chrono::high_resolution_clock::now();
     auto decodedPacket = CommandHandler::decoder->decodePacket(byteStr, packetName);
     auto endTime = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-    std::cout << "Interpreted Packet in " << duration << " ms\n" << std::endl;
-    std::cout << adapters::json::encode(decodedPacket) << std::endl;
+    std::cout << adapters::json::encode(decodedPacket);
+    std::cout << "\n\nInterpreted Packet in " << duration << " ms\n";
 }
 
 void CommandHandler::version() {

@@ -81,6 +81,7 @@ class Interpreter {
         Value evaluateASTExpression(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node);
         bool evaluateASTCondition(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpression> node);
         void throwWarning(InterpreterWarningCodes code, std::string message);
+        uint64_t popBits(size_t bitNum);
     
     private:
         std::shared_ptr<DecodedPacket> decodedPacket;

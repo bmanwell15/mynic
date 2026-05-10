@@ -7,7 +7,6 @@ Loading Mynic File
 - Datafield settings (uint code {endianness: big, units: "m/s"})
 - include other files
 - enums
-
 - define    (define HEADER 0) // like enum, but for only one value. Would be useful for branch values & Array sizes
 - Default settings for datafields:
     default { // can be place inside of packet to only default with that packer, or global for all packets
@@ -21,7 +20,6 @@ Loading Mynic File
         float32 asFloat
     }
 - segment definitions
-- Branches to other packets/segment
 - bitsX datatype, similar to uint, X can be any positive int -> Prints string of bits
 - bytesX datatype, where X is the number of BYTES
 - datetime & timespan std types

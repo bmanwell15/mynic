@@ -18,7 +18,7 @@ class CommandHandler {
 
     private:
         static void load(std::string command);
-        static void interpret(std::vector<Token> commandTokens);
+        static void interpret(std::string command);
         // static void exportTo(std::vector<Token> commandTokens);
         // static void help(std::vector<Token> commandTokens);
         static void version();

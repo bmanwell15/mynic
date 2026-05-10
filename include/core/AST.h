@@ -204,6 +204,7 @@ class AST {
 
         std::shared_ptr<ASTNode> parseTokensToAST(const std::vector<Token>& inputTokens, bool isMainFile=true);
         size_t getStructureSize(std::shared_ptr<ASTField> field);
+        size_t getTypeBitSize(const std::string& type, size_t tokenIndex);
 
     private:
         size_t masterIndex;

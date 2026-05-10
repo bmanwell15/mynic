@@ -139,10 +139,42 @@ std::string removeQuotes(std::string& str) {
 
 
 bool AST::isKnownType(const std::string& type) {
-    return primitiveBitSizes.count(type) || isDynamicSizeType(type) || rootNode->properties[type];
+    return primitiveBitSizes.count(type) || isDynamicSizeType(type) || rootNode->properties.count(type);
+}
+
+size_t AST::getTypeBitSize(const std::string& type, size_t tokenIndex) {
+    if (primitiveBitSizes.count(type)) {
+        return primitiveBitSizes[type];
+    }
+
+    if (isDynamicSizeType(type)) {
+        size_t pos = type.find_first_of("0123456789");
+        if (pos != std::string::npos) {
+            size_t bits = std::stoi(type.substr(pos));
+            if (type.rfind("bytes", 0) == 0) {
+                bits *= 8;
+            }
+            if (bits == 0 || bits > 64) {
+                ErrorHandler::throwError("Integer type width must be between 1 and 64 bits: " + type, tokens, tokenIndex);
+            }
+            primitiveBitSizes[type] = bits;
+            return bits;
+        }
+    }
+
+    auto propertyIt = rootNode->properties.find(type);
+    if (propertyIt != rootNode->properties.end() && propertyIt->second) {
+        return getStructureSize(propertyIt->second);
+    }
+
+    ErrorHandler::throwError("Unknown datatype: " + type, tokens, tokenIndex);
+    return 0;
 }
 
 size_t AST::getStructureSize(std::shared_ptr<ASTField> field) {
+    if (!field) {
+        ErrorHandler::throwError("Unable to get structure size of null field.", tokens, masterIndex);
+    }
     if (field->type == NodeType::PRIMITIVE) {
         auto asPrim = std::static_pointer_cast<ASTPrimitiveValue>(field);
         return asPrim->sizeInBits;
@@ -355,7 +387,18 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
 
     if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == COLON) {
         eatToken(COLON);
-        field->sizeInBits = std::stoul(eatToken(INT_LITERAL).value);
+        Token bitNumToken = eatToken({INT_LITERAL, IDENTIFIER});
+        if (bitNumToken.type == INT_LITERAL) {
+            field->sizeInBits = std::stoul(bitNumToken.value);
+        } else {
+            auto definedVarIt = definedVariables.find(bitNumToken.value);
+            if (definedVarIt != definedVariables.end() &&
+                std::holds_alternative<uint64_t>(definedVarIt->second)) {
+                field->sizeInBits = std::get<uint64_t>(definedVarIt->second);
+            } else {
+                ErrorHandler::throwError("Defined value must be an integer when designating number of bits in primitive variable '" + field->name + "'", tokens, masterIndex);
+            }
+        }
         field->settings = parsePrimitiveSettings();
         return field;
     }
@@ -535,7 +578,7 @@ std::shared_ptr<ASTField> AST::parseDefine() {
         definedVariables[varName] = eatToken(STRING_LITERAL).value;
         return std::make_shared<ASTField>();
     } else if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == BOOL_LITERAL) {
-        definedVariables[varName] = eatToken(BOOL_LITERAL).value;
+        definedVariables[varName] = convertTokenValue(eatToken(BOOL_LITERAL));
         return std::make_shared<ASTField>();
     }
     auto varExpression = parseLogicalOr();
@@ -568,6 +611,14 @@ std::shared_ptr<ASTBitfield> AST::parseBitfield() {
     blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
     while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
         std::shared_ptr<ASTField> var = parseField();
+        
+        if (var->type == NodeType::PRIMITIVE) {
+            auto asPrim = std::static_pointer_cast<ASTPrimitiveValue>(var);
+            const std::unordered_set<std::string> allowedInBitfield = {"bit", "bits", "byte", "bytes", "uint", "int", "bool", "short", "ushort", "long", "ulong"};
+            if (allowedInBitfield.find(asPrim->datatype) == allowedInBitfield.end())
+                ErrorHandler::throwError("Primitive value of type '" + asPrim->datatype + "' cannot be in bitfield '" + bitfield.name + "'", tokens, masterIndex);
+        }
+
         if (var->type != NodeType::ROOT_NODE)
             bitfield.subfields.push_back(var);
 
@@ -629,21 +680,32 @@ std::shared_ptr<ASTBranch> AST::parseBranch() {
     eatToken(IDENTIFIER); // Eat branch Token
     ASTBranch branch;
     ASTPrimitiveValue parseAs;
+    parseAs.type = NodeType::PRIMITIVE;
     if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type != OPEN_BRACKET) { // If branch type explicitly defined
         parseAs.datatype = eatToken(IDENTIFIER).value;
+        parseAs.sizeInBits = getTypeBitSize(parseAs.datatype, masterIndex - 1);
     } else {
         parseAs.datatype = "uint8";
+        parseAs.sizeInBits = 8;
     }
-    parseAs.sizeInBits = primitiveBitSizes[parseAs.datatype];
-    parseAs.type = NodeType::PRIMITIVE;
+    // parseAs.sizeInBits = primitiveBitSizes[parseAs.datatype];
     branch.type = NodeType::BRANCH;
     branch.parseAs = parseAs;
     eatToken(OPEN_BRACKET);
     blockDepth_t currentBlockDepth = tokens[masterIndex].blockDepth;
     while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
         eatOptionalToken({NEW_LINE});
-        auto destination = parseField();
-        // std::string destination = eatToken(IDENTIFIER).value; // Destination
+        std::shared_ptr<ASTField> destination;
+        if (isKnownType(Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).value)) {
+            auto primitiveCall = std::make_shared<ASTPrimitiveValue>();
+            primitiveCall->datatype = eatToken(IDENTIFIER).value;
+            primitiveCall->name = primitiveCall->datatype;
+            primitiveCall->type = NodeType::PRIMITIVE;
+            primitiveCall->sizeInBits = getTypeBitSize(primitiveCall->datatype, masterIndex - 1);
+            destination = primitiveCall;
+        } else {
+            destination = parseField();
+        }
         std::string ifOrDefaultsKeyword = eatToken(IDENTIFIER).value;
         if (ifOrDefaultsKeyword == "defaults") {
             branch.destinationDefault = destination;
@@ -690,17 +752,16 @@ std::shared_ptr<ASTSwitch> AST::parseSwitch() {
     while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
         eatOptionalToken({NEW_LINE});
         std::shared_ptr<ASTField> destination;
-        Token nextToken = Lexer::nextNonWhiteSpaceToken(tokens, masterIndex);
-        if (isKnownType(nextToken.value)) {
-            auto primitiveValueCall = std::make_shared<ASTPrimitiveValue>();
-            primitiveValueCall->type = NodeType::PRIMITIVE;
-            primitiveValueCall->datatype = eatToken(IDENTIFIER).value;
-            primitiveValueCall->name = primitiveValueCall->datatype;
-            destination = primitiveValueCall;
+        if (isKnownType(Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).value)) {
+            auto primitiveCall = std::make_shared<ASTPrimitiveValue>();
+            primitiveCall->datatype = eatToken(IDENTIFIER).value;
+            primitiveCall->name = primitiveCall->datatype;
+            primitiveCall->type = NodeType::PRIMITIVE;
+            primitiveCall->sizeInBits = getTypeBitSize(primitiveCall->datatype, masterIndex - 1);
+            destination = primitiveCall;
         } else {
-           destination = parseField(); // parsing lambda segment
+            destination = parseField();
         }
-        // std::string destination = eatToken(IDENTIFIER).value; // Destination
         std::string ifOrDefaultsKeyword = eatToken(IDENTIFIER).value;
         if (ifOrDefaultsKeyword == "defaults") {
             switchDef.destinationDefault = destination;
