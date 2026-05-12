@@ -18,9 +18,9 @@
 *.pdb
 
 # Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+# *.so
+# *.dylib
+# *.dll
 
 # Fortran module files
 *.mod
@@ -43,10 +43,5 @@
 # Build files
 *.cmake
 
-dist/*
 Makefile
 build
-src/adapters/build
-src/core/build
-src/cli/build
-src/api/build

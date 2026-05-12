@@ -3,6 +3,12 @@
 
 blockDepth_t blockDepth = 0;
 
+std::string removeQuotes(std::string& str) {
+    if (str[0] == '\"')
+        return str.substr(1, str.size() - 2);
+    return str;
+}
+
 Token Lexer::createToken(const std::string value, const TokenType type, const blockDepth_t blockDepth, size_t lineNumber) {
     Token t;
     t.value = value;
@@ -179,7 +185,7 @@ std::vector<Token> Lexer::tokenize(const std::string content) {
                 str += "\"";
                 
                 ttype = STRING_LITERAL;
-                tokens.push_back(createToken(str, ttype, blockDepth, lineNumber));
+                tokens.push_back(createToken(removeQuotes(str), ttype, blockDepth, lineNumber));
             } else if (isalpha(ch) || ch == '_') { // Make an IDENTIFIER
                 std::string word = "";
                 while (i < content.size() && (isalpha(ch) || isdigit(ch) || ch == '_')) {

@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -g")
 
-add_executable(mynic_cli 
+add_executable(mynic 
     main.cpp
     CommandHandler.cpp
 
@@ -23,12 +23,12 @@ add_executable(mynic_cli
 )
 
 # 1. Point to the library file
-# target_link_libraries(mynic_cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libmynic.so)
-# target_link_libraries(mynic_cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libmynic_adapters.so)
+# target_link_libraries(mynic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libmynic.so)
+# target_link_libraries(mynic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libmynic_adapters.so)
 
 # 2. FIX: Tell the compiler WHERE the .h files are actually located
 # We need to include both the current dir (.) and the core dir (../core)
-target_include_directories(mynic_cli PRIVATE 
+target_include_directories(mynic PRIVATE 
     .
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/core
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/adapters
@@ -36,10 +36,10 @@ target_include_directories(mynic_cli PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include/cli
 )
 
-target_compile_options(mynic_cli PRIVATE -fsanitize=address -g -O1 -fno-omit-frame-pointer)
-target_link_options(mynic_cli PRIVATE -fsanitize=address)
+target_compile_options(mynic PRIVATE -fsanitize=address -g -O1 -fno-omit-frame-pointer)
+target_link_options(mynic PRIVATE -fsanitize=address)
 
 # 3. Installation logic (Optional but kept for your structure)
-# install(TARGETS mynic_cli DESTINATION bin) # CLI apps usually go in 'bin', not 'lib'
+# install(TARGETS mynic DESTINATION bin) # CLI apps usually go in 'bin', not 'lib'
 # install(DIRECTORY ../core/ DESTINATION include FILES_MATCHING PATTERN "*.h")
 # install(DIRECTORY ../adapters/ DESTINATION include FILES_MATCHING PATTERN "*.h")

@@ -13,6 +13,7 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <typeinfo>
 
 #include "ErrorHandler.h"
 #include "BitQueue.h"
@@ -86,6 +87,7 @@ class Interpreter {
     private:
         std::shared_ptr<DecodedPacket> decodedPacket;
         std::shared_ptr<ASTNode> astTree;
+        std::shared_ptr<InterpretedPacket> currentPacket;  // Track current parsing context
 
         std::shared_ptr<InterpretedField> findField(const std::shared_ptr<InterpretedField>& field, const std::string& name);
         std::shared_ptr<InterpretedPacket> interpretPacket(const ASTPacket& packetDef, std::shared_ptr<InterpretedPacket> rootNode=nullptr);

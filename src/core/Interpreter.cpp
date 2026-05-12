@@ -6,6 +6,7 @@ Interpreter::Interpreter() {
     terminateSignal = false;
     isEndOfStream = false;
     globalSettings = std::make_shared<ASTPrimitiveValueSettings>();
+    currentPacket = nullptr;
 }
 
 DecodedPacket Interpreter::interpretBytes(const std::vector<uint8_t>& dataBytes, const std::string& packetName, const std::shared_ptr<ASTNode>& pAstTree) {
@@ -218,7 +219,7 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
         
         auto primField = std::static_pointer_cast<InterpretedPrimitiveValue>(enumField);
         if (!std::holds_alternative<std::string>(primField->value)) return std::nullopt;
-        
+        std::cout << primField->name << " | " << primField->datatype << std::endl;
         std::string enumValueName = std::get<std::string>(primField->value);
         
         // Find the enum definition
@@ -240,7 +241,7 @@ std::optional<Value> Interpreter::getParsedValue(const std::shared_ptr<Interpret
             auto primValue = std::static_pointer_cast<InterpretedPrimitiveValue>(field);
             return primValue->value;
         }
-        throwWarning(InterpreterWarningCodes::EXPR_VAR_NOT_PRIMITIVE, "Cannot do expr on non primitive variable '" + varName + "'.");
+        throwWarning(InterpreterWarningCodes::EXPR_VAR_NOT_PRIMITIVE, "Cannot do expr on non-primitive variable '" + varName + "'.");
         return std::nullopt;
     }
     
@@ -281,7 +282,7 @@ Value Interpreter::interpretValue(ASTPrimitiveValue& field) {
                 return 0;
             }
             for (const auto enumValue : enumDef->variables) {
-                if (std::get<uint64_t>(enumValue->varValue) == bits) {
+                if (std::holds_alternative<uint64_t>(enumValue->varValue) && std::get<uint64_t>(enumValue->varValue) == bits) {
                     return Value{enumValue->varName};
                 }
             }
@@ -498,6 +499,8 @@ Value Interpreter::evaluateBinaryOp(std::string op, Value left, Value right) {
                 throwWarning(InterpreterWarningCodes::INVALID_STRING_OPERATION, "Invalid operator '" + op + "'. Strings '" + static_cast<std::string>(l) + "' and '" + static_cast<std::string>(r) + "' can only be added or compared for equality.");
                 return 0;
             }
+            // std::cout << "Type L: " << typeid(l).name() << " Value: " << l << std::endl;
+            // std::cout << "Type R: " << typeid(r).name() << " Value: " << r << std::endl;
             throwWarning(InterpreterWarningCodes::INVALID_BINARY_OPERATOR_TYPE, "Invalid types for binary operator: " + op);
             return 0;
         }
@@ -637,18 +640,35 @@ void Interpreter::enforcePostInterpretationSettings(std::shared_ptr<InterpretedP
 
 
 std::shared_ptr<InterpretedPacket> Interpreter::interpretPacket(const ASTPacket& packetDef, std::shared_ptr<InterpretedPacket> pRootNode) {
+    auto previousPacket = currentPacket;  // Save previous context
     auto packet = pRootNode == nullptr ? std::make_shared<InterpretedPacket>() : pRootNode;
+    currentPacket = packet;  // Set current context
     packet->name = packetDef.name;
     packet->type = NodeType::PACKET;
     for (const auto& fieldPtr : packetDef.fields) {
         if (terminateSignal || (packet->settings && packet->settings->flags.packetShouldReturn)) {
+            currentPacket = previousPacket;  // Restore previous context
             return packet;
         }
         auto parsedField = interpretField(fieldPtr);
+        if (!parsedField) continue;
         if (parsedField->type != NodeType::ROOT_NODE)
             packet->fields.push_back(parsedField);
     }
+    currentPacket = previousPacket;  // Restore previous context
     return packet;
+}
+
+std::string getOperatorString(ConditionOperators op) {
+    switch (op) {
+        case ConditionOperators::EQUAL:              return "==";
+        case ConditionOperators::NOT_EQUAL:          return "!=";
+        case ConditionOperators::LESS_THAN:          return "<";
+        case ConditionOperators::LESS_EQUAL_THAN:    return "<=";
+        case ConditionOperators::GREATER_THAN:       return ">";
+        case ConditionOperators::GREATER_EQUAL_THAN: return ">=";
+        default: return "==";
+    }
 }
 
 std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<ASTField> field) {
@@ -767,23 +787,22 @@ std::shared_ptr<InterpretedField> Interpreter::interpretField(std::shared_ptr<AS
         }
     } else if (field->type == NodeType::SWITCH) {
         auto switchDef = std::static_pointer_cast<ASTSwitch>(field);
-        auto variableValOpt = getParsedValue(rootNode, switchDef->variableName);
+        auto variableValOpt = getParsedValue(currentPacket ? currentPacket : rootNode, switchDef->variableName);
+
         if (!variableValOpt.has_value()) {
             throwWarning(InterpreterWarningCodes::VARIABLE_NOT_FOUND_IN_SWITCH, "Variable '" + switchDef->variableName + "' in switch not found.");
             return nullptr;
         }
+
         Value variableVal = variableValOpt.value();
         for (const auto& nameConditionPair : switchDef->destinationsAndConditions) {
-            if (
-                nameConditionPair.second->conditionOperator == ConditionOperators::EQUAL && std::get<uint64_t>(evaluateBinaryOp("==", variableVal, nameConditionPair.second->parsedCheckValue)) ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::NOT_EQUAL && std::get<uint64_t>(evaluateBinaryOp("!=", variableVal, nameConditionPair.second->parsedCheckValue)) ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_THAN && std::get<uint64_t>(evaluateBinaryOp("<", variableVal, nameConditionPair.second->parsedCheckValue)) ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::LESS_EQUAL_THAN && std::get<uint64_t>(evaluateBinaryOp("<=", variableVal, nameConditionPair.second->parsedCheckValue)) ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_THAN && std::get<uint64_t>(evaluateBinaryOp(">", variableVal, nameConditionPair.second->parsedCheckValue)) ||
-                nameConditionPair.second->conditionOperator == ConditionOperators::GREATER_EQUAL_THAN && std::get<uint64_t>(evaluateBinaryOp(">=", variableVal, nameConditionPair.second->parsedCheckValue))
-            ) {
-                return interpretField(nameConditionPair.first);
+            const auto& condition = nameConditionPair.second;
+            auto resultVariant = evaluateBinaryOp(getOperatorString(condition->conditionOperator), variableVal, condition->parsedCheckValue);
+            bool conditionMet = false;
+            if (auto* val = std::get_if<uint64_t>(&resultVariant)) {
+                if (*val != 0) {conditionMet = true;}
             }
+            if (conditionMet) {return interpretField(nameConditionPair.first);}
         }
 
         if (switchDef->destinationDefault) {

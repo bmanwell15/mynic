@@ -1,0 +1,61 @@
+/*
+    Event System Example in Mynic
+
+    This file contains a complete example on what a packet which contains system event logs would look like. This example is of a small drone used to take images.
+
+    This example demonstrates:
+    1. Using enums with metadata for event opcodes
+    2. Creating conditional segments based on enum values
+    3. Using switch statements for dynamic parsing
+    4. Arrays with variable length
+    5. Bitfields for compact data storage
+*/
+
+enum uint8 EVENT_OP_CODE {
+    POWER_ON,           {hasDetails: false, detailsSizeBytes: 0}  // Simple event, no additional data
+    POWER_OFF,          {hasDetails: true, detailsSizeBytes: 1}   // Has details: whether restarting
+    IMAGE_DOWNLINK,     {hasDetails: true, detailsSizeBytes: 1036} // Has details: GPS coords + image data
+    UPLINK_ACK,         {hasDetails: false, detailsSizeBytes: 0}  // Simple acknowledgment
+    UPLINK_NAK,         {hasDetails: true, detailsSizeBytes: 1}   // Has details: error code
+}
+
+enum uint8 NAK_ERROR_CODE {
+    UNKNOWN,                // Unknown error occurred
+    INVALID_PARAMS,         // Invalid parameters received
+    INVALID_OPTION_SELECTED // Invalid option was selected
+}
+
+// Detail segments for events that have additional information
+segment EVENT_POWER_OFF {bool restarting;}  // Whether the drone is restarting after power off
+segment EVENT_IMAGE_DOWNLINK {
+    float lat;    // Latitude of image capture location
+    float lon;    // Longitude of image capture location
+    float alt;    // Altitude of image capture location
+    bytes imageData[1024];  // Raw image data (1024 bytes)
+}
+segment EVENT_UPLINK_NAK {NAK_ERROR_CODE error;}  // Error code explaining why uplink failed
+
+// Main event segment that uses switch to conditionally parse details
+segment EVENT {
+    EVENT_OP_CODE eventOpcode;  // The type of event that occurred
+    switch eventOpcode {        // Parse the details of an event, if there are details to be parsed
+        EVENT_POWER_OFF if "POWER_OFF";           // Parse power off details if opcode is POWER_OFF
+        EVENT_IMAGE_DOWNLINK if "IMAGE_DOWNLINK"; // Parse image details if opcode is IMAGE_DOWNLINK
+        EVENT_UPLINK_NAK if "UPLINK_NAK";         // Parse NAK details if opcode is UPLINK_NAK
+    }
+}
+
+packet DRONE_EVENT_PACKET {
+    datetime32s timestamp;       // When this packet was set for transmission
+    string craftId[5];           // Unique identifier for the drone (e.g., "LR203")
+
+    bitfield BATTERY_INFO {      // Compact battery status information
+        uint batteryPercentage : 7 {units: "%"};  // Battery level (0-100%)
+        bool onLowPowerMode : 1;                  // Whether low power mode is active
+    }
+
+    uint8 numberOfEvents;        // How many events are in this packet
+    EVENT events[numberOfEvents]; // Array of events (variable length based on numberOfEvents)
+
+    // EVENT events[TO_END]; // Could also do this, no numberOfEvents required
+}

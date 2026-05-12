@@ -1,11 +1,3 @@
-
-/* Possible Type setting options:
-    - endianness: str -> [big|little]
-    - hidden: bool
-    - units: str 
-
-*/
-
 //import "./examples/imported.myn";
 
 typedef uint numbut;

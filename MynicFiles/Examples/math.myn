@@ -1,0 +1,19 @@
+/*
+    This file provides basic and complex example of how to use the expr field for primitive values.
+*/
+define ADD_ONE 0x01
+
+enum uint8 E1 {
+    ZERO = 0 {attr: 1}
+    ONE = 1 {attr: 2}
+}
+
+packet MathPacket {
+    uint8 wow;
+    uint8 num {expr: num + 1};
+    float dMath {expr: dMath * 3.1415};
+    E1 enum1;
+    byte arr[enum1.attr + 1];
+    byte j[2 + 1 + ADD_ONE];
+    uint8 arr[2] {expr: arr * 2}; // Performs the expr function for each element (i.e, multiplies each uint8 by 2)
+}

@@ -1,2 +1,2 @@
 cmake src/cli/build && cmake --build src/cli/build -j
-mv -vf src/cli/build/mynic_cli dist
+mv -vf src/cli/build/mynic dist

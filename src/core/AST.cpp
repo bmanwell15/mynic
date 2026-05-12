@@ -131,12 +131,6 @@ bool isDynamicSizeType(const std::string& s) {
     return false;
 }
 
-std::string removeQuotes(std::string& str) {
-    if (str[0] == '\"')
-        return str.substr(1, str.size() - 2);
-    return str;
-}
-
 
 bool AST::isKnownType(const std::string& type) {
     return primitiveBitSizes.count(type) || isDynamicSizeType(type) || rootNode->properties.count(type);
@@ -436,9 +430,9 @@ std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {
                 endianValue = endianValueToken.value;
             }
 
-            if (endianValue == "\"big\"") {
+            if (endianValue == "big") {
                 settings->flags.endianBig = true;
-            } else if (endianValue == "\"little\"") {
+            } else if (endianValue == "little") {
                 settings->flags.endianBig = false;
             } else {
                 ErrorHandler::throwError("Invalid endian setting: " + endianValueToken.value, tokens, masterIndex - 1);
@@ -448,7 +442,7 @@ std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {
             settings->flags.isHidden = (toHide.value == "true");
         } else if (settingToken.value == "units") {
             Token unitVal = eatToken(STRING_LITERAL);
-            settings->units = removeQuotes(unitVal.value);
+            settings->units = unitVal.value;
         } else if (settingToken.value == "expr") {
             settings->exprASTTree = parseLogicalOr();
         } else if (settingToken.value == "includePacketName") {
@@ -475,7 +469,7 @@ std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {
 std::shared_ptr<ASTField> AST::parseImport() {
     eatToken(IDENTIFIER); // import token
     Token fileName = eatToken(STRING_LITERAL);
-    std::string filePath = removeQuotes(fileName.value);
+    std::string filePath = fileName.value;
     std::shared_ptr<std::vector<Token>> mainFileTokens = std::make_shared<std::vector<Token>>(tokens);
     size_t mainMasterIndex = masterIndex;
     mynic->loadFile(filePath);

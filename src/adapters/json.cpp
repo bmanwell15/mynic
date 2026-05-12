@@ -7,10 +7,7 @@ void printPrimitive(std::stringstream& ss, std::shared_ptr<InterpretedPrimitiveV
         if constexpr (std::is_same_v<T, bool>) {
             ss << (value ? "true" : "false");
         } else if constexpr (std::is_same_v<T, std::string>) {
-            if (primField->settings && primField->settings->units != "")
-                ss << value;
-            else
-                ss << '\"' << value << '\"';
+            ss << '\"' << value << '\"';
         } else if constexpr (std::is_same_v<T, uint8_t>) { // byte
             if (primField->settings && primField->settings->units != "")
                 ss << "0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(value) << std::dec;
@@ -29,15 +26,15 @@ void printPrimitive(std::stringstream& ss, std::shared_ptr<InterpretedPrimitiveV
     }, primField->value);
 }
 
-void encode(std::stringstream& ss, const std::shared_ptr<InterpretedField>& field, int indent) {
+void encode(std::stringstream& ss, const std::shared_ptr<InterpretedField>& field, int indent, bool isArrayPrinting) {
     std::string indentStr(indent * 3, ' ');
     if (field->type == NodeType::PACKET || field->type == NodeType::SEGMENT) {
         auto packetField = std::static_pointer_cast<InterpretedPacket>(field);
-        ss << indentStr << '\"' << packetField->name << "\": {\n";
+        if (isArrayPrinting) ss << '\n' << indentStr << "{\n"; else ss << indentStr << '\"' << packetField->name << "\": {\n";
         std::vector<std::string> subJsons;
         for (const auto& subfield : packetField->fields) {
             std::stringstream subSs;
-            encode(subSs, subfield, indent + 1);
+            encode(subSs, subfield, indent + 1, false);
             subJsons.push_back(subSs.str());
         }
         for (size_t i = 0; i < subJsons.size(); i++) {
@@ -52,18 +49,19 @@ void encode(std::stringstream& ss, const std::shared_ptr<InterpretedField>& fiel
     } else if (field->type == NodeType::PRIMITIVE) {
         auto primField = std::static_pointer_cast<InterpretedPrimitiveValue>(field);
         if (primField->settings && primField->settings->flags.isHidden) return;
-        ss << indentStr << "\"" << primField->name << "\": ";
-        if (primField->settings && primField->settings->units != "") ss << '\"';
+        if (!isArrayPrinting)
+            ss << indentStr << "\"" << primField->name << "\": ";
+
         printPrimitive(ss, primField);
         if (primField->settings && primField->settings->units != "") ss << ' ' << primField->settings->units << '\"';
         ss << "\n";
     } else if (field->type == NodeType::BITFIELD) {
         auto bitField = std::static_pointer_cast<InterpretedBitfield>(field);
-        ss << indentStr << '\"' << bitField->name << "\": {\n";
+        if (isArrayPrinting) ss << '\n' << indentStr << "{\n"; else ss << indentStr << '\"' << bitField->name << "\": {\n";
         std::vector<std::string> subJsons;
         for (const auto& subfield : bitField->subfields) {
             std::stringstream subSs;
-            encode(subSs, subfield, indent + 1);
+            encode(subSs, subfield, indent + 1, false);
             subJsons.push_back(subSs.str());
         }
         for (size_t i = 0; i < subJsons.size(); i++) {
@@ -76,11 +74,11 @@ void encode(std::stringstream& ss, const std::shared_ptr<InterpretedField>& fiel
         ss << indentStr << "}\n";
     } else if (field->type == NodeType::UNION) {
         auto unionfield = std::static_pointer_cast<InterpretedUnionfield>(field);
-        ss << indentStr << '\"' << unionfield->name << "\": {\n";
+        if (isArrayPrinting) ss << '\n' << indentStr << "{\n"; else ss << indentStr << '\"' << unionfield->name << "\": {\n";
         std::vector<std::string> subJsons;
         for (const auto& subfield : unionfield->subfields) {
             std::stringstream subSs;
-            encode(subSs, subfield, indent + 1);
+            encode(subSs, subfield, indent + 1, false);
             subJsons.push_back(subSs.str());
         }
         for (size_t i = 0; i < subJsons.size(); i++) {
@@ -96,12 +94,10 @@ void encode(std::stringstream& ss, const std::shared_ptr<InterpretedField>& fiel
         ss << indentStr << '\"' << arrayfield->name << "\": [ ";
         for (size_t i = 0; i < arrayfield->list.size(); i++) {
             auto& listElement = arrayfield->list[i];
-            if (listElement->type != NodeType::PRIMITIVE) {throw std::runtime_error("Element not primitive.");}
-            auto asPrimitive = std::static_pointer_cast<InterpretedPrimitiveValue>(listElement);
-            printPrimitive(ss, asPrimitive);
-            if (i != arrayfield->list.size() - 1) ss << ", ";
+            encode(ss, listElement, indent + 1, true);
+            if (i != arrayfield->list.size() - 1) {ss.seekp(-1, ss.cur); ss << ", ";}
         }
-        ss << " ]\n";
+        ss << indentStr << "]\n";
     }
 }
 
@@ -144,7 +140,7 @@ std::string adapters::json::encode(const DecodedPacket& decodedPacket) {
         std::string timestamp = std::format("{:%F %T}", now_ms); // %F = YYYY-MM-DD, %T = HH:MM:SS.mmm
         ss << "   \"Timestamp\": \"" << timestamp << "\",\n";
     }
-    encode(ss, decodedPacket.rootField, 1);
+    encode(ss, decodedPacket.rootField, 1, false);
     encodeWarnings(ss, decodedPacket);
     ss << '}';
     return ss.str();
