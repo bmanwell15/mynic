@@ -8,6 +8,7 @@
 
 #include "lexer.h"
 
+// Warning codes used by the Mynic interpreter.
 enum class InterpreterWarningCodes {
     UNKNOWN,
     VALIDATION_FAIL,
@@ -29,19 +30,29 @@ enum class InterpreterWarningCodes {
     BIT_QUEUE_EMPTY
 };
 
+// Represents an interpreter warning and its message.
 struct InterpreterWarning {
     InterpreterWarningCodes warningType;
     std::string errorMessage;
 };
 
+// Handles parser errors and interpreter warnings.
 class ErrorHandler {
     public:
+        // Throws a syntax or parsing error including token context.
         static void throwError(const std::string& message, std::vector<Token>& tokens, size_t i, std::string packetName="");
+
+        // Creates an interpreter warning object.
         static InterpreterWarning throwInterpreterWarning(InterpreterWarningCodes code, std::string message);
 
     private:
+        // Prints a token line with optional error highlighting.
         static void printLine(std::vector<Token>& tokens, size_t i, bool includeErrorSquiggle, blockDepth_t targetDepth=0);
+
+        // Prints a specific line from token stream.
         static void printLine(std::vector<Token>& tokens, size_t lineNum);
+
+        // Prints the token block around an error.
         static void printBlock(std::vector<Token>& tokens, size_t i);
 };
 

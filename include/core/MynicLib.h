@@ -10,8 +10,11 @@
 
 struct InterpretedPrimitiveValue;
 struct InterpretedPacket;
+
+// Built-in functions available to Mynic expressions.
 class MynicLib {
     public:
+        // Math helper functions exposed to the interpreter.
         static Value mathMax(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, Interpreter* interpreter);
         static Value mathMin(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, Interpreter* interpreter);
         static Value mathPow(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive, std::shared_ptr<ASTExpressionFunctionCall> functionCall, Interpreter* interpreter);
@@ -23,6 +26,7 @@ class MynicLib {
         static Value mathPi();
         static Value mathE();
 
+        // Stream control functions used in Mynic scripts.
         static void rewind(std::shared_ptr<ASTFunctionCall> functionCall, Interpreter* interpreter);
         static void skip(std::shared_ptr<ASTFunctionCall> functionCall, Interpreter* interpreter);
         static void seek(std::shared_ptr<ASTFunctionCall> functionCall, Interpreter* interpreter);

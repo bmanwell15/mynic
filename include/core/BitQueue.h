@@ -39,33 +39,32 @@
  */
 class BitQueue {
 public:
+    // Default constructor initializes an empty bit queue.
     BitQueue() : bitPos_(0) {}
+
+    // Constructs bit queue from raw byte data.
     explicit BitQueue(std::vector<uint8_t> data)
         : owned_(std::move(data)),
           data_(owned_),
           bitPos_(0) {}
 
+    // Returns true when no bits remain to be read.
     bool empty() const {
         return bitPos_ >= data_.size() * 8;
     }
 
+    // Returns the number of remaining bits.
     size_t size() const {
         return data_.size() * 8 - bitPos_;
     }
 
+    // Pops the next n bits from the stream (up to 64 bits).
     std::optional<uint64_t> pop(size_t n) {
         if (n > 64) n = 64;
         return readBits(n);
     }
 
-    // uint64_t peek(size_t n) const {
-    //     if (n > 64) n = 64;
-    //     size_t savedPos = bitPos_;
-    //     auto val = const_cast<BitQueue*>(this)->readBits(n);
-    //     const_cast<BitQueue*>(this)->bitPos_ = savedPos;
-    //     return val;
-    // }
-
+    // Restores the bit position by the specified amount.
     void rewind(size_t bits) {
         if (bits > bitPos_) {
             bitPos_ = 0;
@@ -74,15 +73,18 @@ public:
         bitPos_ -= bits;
     }
 
+    // Returns the current bit index.
     size_t bitPos() const {
         return bitPos_;
     }
 
+    // Sets the current bit index.
     void setBitPos(size_t newBitPos) {
         bitPos_ = newBitPos;
     }
 
 private:
+    // Reads n bits without additional external logic.
     std::optional<uint64_t> readBits(size_t n) {
         if (n == 0 || n > 64 || bitPos_ + n > data_.size() * 8)
             return std::nullopt;
@@ -110,9 +112,9 @@ private:
         return result;
     }
 
-    std::vector<uint8_t> owned_; // Stores a vector of the raw bytes.
-    std::span<const uint8_t> data_; // Stores the raw bytes as a span object
-    size_t bitPos_; // Stores the index of the next bit to be popped/peeked
+    std::vector<uint8_t> owned_; // Stores raw byte ownership.
+    std::span<const uint8_t> data_; // Span over raw bytes.
+    size_t bitPos_; // Current bit position in the stream.
 };
 
 #endif
