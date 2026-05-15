@@ -4,7 +4,7 @@
 #include "Mynic.h"
 
 namespace adapters::objects {
-    // Prints the loaded AST schema for all definitions.
+    // Prints the loaded AST schema for all packet definitions.
     void printSchema(std::shared_ptr<ASTNode>& rootNode);
 
     // Prints the structure of a packet definition.

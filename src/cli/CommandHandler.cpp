@@ -1,7 +1,6 @@
 #include "CommandHandler.h"
 
 std::shared_ptr<Mynic> CommandHandler::decoder = std::make_shared<Mynic>();
-std::string CommandHandler::exportFilePath;
 
 void CommandHandler::runCommand(std::string command) {
     auto commandTokens = Lexer::tokenize(command);

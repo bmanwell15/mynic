@@ -6,7 +6,7 @@ double getAsDouble(Value& v) {
         if constexpr ((std::is_arithmetic_v<B>)) {
             return static_cast<double>(b);
         } else {
-            throw std::runtime_error("Unsupported type: both arguments must be numeric");
+            return -1.0;
         }
     }, v);
     return result;

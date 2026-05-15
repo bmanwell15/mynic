@@ -9,10 +9,10 @@ namespace adapters::file {
     // Reads the full contents of a file and returns it as a string.
     std::string read(std::string filepath);
 
-    // Writes content to a file, replacing any existing contents.
+    /** Writes `content` to the specified `filepath`. Returns true if the file was found and writted to, false otherwise. */
     bool write(std::string filepath, std::string content);
 
-    // Appends content to the end of an existing file.
+    /** Appends `content` to the specified `filepath`. Returns true if the file was found and writted to, false otherwise. */
     bool append(std::string filepath, std::string content);
 };
 

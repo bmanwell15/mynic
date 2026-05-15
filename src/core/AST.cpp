@@ -58,7 +58,7 @@ std::shared_ptr<ASTNode> AST::parseTokensToAST(const std::vector<Token>& inputTo
     rootNode->type = NodeType::ROOT_NODE;
     this->tokens = inputTokens;
 
-    for (masterIndex = 0; masterIndex < this->tokens.size(); masterIndex++) {
+    for (masterIndex = 0; masterIndex < this->tokens.size(); masterIndex++) { // While the file still has tokens, parse
         parseField();
     }
 
@@ -70,7 +70,7 @@ Token AST::eatToken(std::initializer_list<TokenType> types) {
         skipWhiteSpace();
 
     if (masterIndex >= tokens.size() - 1)
-        throw std::runtime_error("Unexpected end of token stream.");
+        ErrorHandler::throwError("Unexpected end of token stream.", tokens, masterIndex);
 
     for (const TokenType& expectedType : types) {
         if (tokens[masterIndex].type == expectedType) {
@@ -95,7 +95,7 @@ void AST::eatOptionalToken(std::initializer_list<TokenType> types) {
         skipWhiteSpace();
 
     if (masterIndex >= tokens.size() - 1)
-        throw std::runtime_error("Unexpected end of token stream.");
+        ErrorHandler::throwError("Unexpected end of token stream.", tokens, masterIndex);
 
     for (const TokenType& expectedType : types) {
         if (tokens[masterIndex].type == expectedType) {
@@ -119,15 +119,15 @@ bool isDynamicSizeType(const std::string& s) {
     const std::vector<std::string> prefixes = {"int", "uint", "bits", "bytes"};
     for (const auto& p : prefixes) {
         if (p == "bytes" && s.size() <= p.size()) continue; // must have at least one digit after prefix
-        if (s.compare(0, p.size(), p) != 0) continue;
+        if (s.compare(0, p.size(), p) != 0) continue; // Must match a prefix in prefixes
 
-        for (size_t i = p.size(); i < s.size(); ++i) {
+        // Cannot have a non-digit char after the first number (i.e. int8s is unacceptable)
+        for (size_t i = p.size(); i < s.size(); ++i) { 
             unsigned char c = static_cast<unsigned char>(s[i]);
             if (!std::isdigit(c)) return false;
         }
         return true;
     }
-
     return false;
 }
 
@@ -136,32 +136,31 @@ bool AST::isKnownType(const std::string& type) {
     return primitiveBitSizes.count(type) || isDynamicSizeType(type) || rootNode->properties.count(type);
 }
 
-size_t AST::getTypeBitSize(const std::string& type, size_t tokenIndex) {
-    if (primitiveBitSizes.count(type)) {
+size_t AST::getTypeBitSize(const std::string& type) {
+    if (primitiveBitSizes.count(type))
         return primitiveBitSizes[type];
-    }
 
     if (isDynamicSizeType(type)) {
         size_t pos = type.find_first_of("0123456789");
         if (pos != std::string::npos) {
             size_t bits = std::stoi(type.substr(pos));
-            if (type.rfind("bytes", 0) == 0) {
+            if (type.rfind("bytes", 0) == 0)
                 bits *= 8;
-            }
-            if (bits == 0 || bits > 64) {
-                ErrorHandler::throwError("Integer type width must be between 1 and 64 bits: " + type, tokens, tokenIndex);
-            }
+            
+            if (bits == 0 || bits > 64)
+                ErrorHandler::throwError("Integer type width must be between 1 and 64 bits: " + type, tokens, masterIndex - 1);
+            
             primitiveBitSizes[type] = bits;
             return bits;
         }
     }
 
     auto propertyIt = rootNode->properties.find(type);
-    if (propertyIt != rootNode->properties.end() && propertyIt->second) {
+    if (propertyIt != rootNode->properties.end() && propertyIt->second) { // If packet, struct, enum, etc...
         return getStructureSize(propertyIt->second);
     }
 
-    ErrorHandler::throwError("Unknown datatype: " + type, tokens, tokenIndex);
+    ErrorHandler::throwError("Unknown datatype: " + type, tokens, masterIndex);
     return 0;
 }
 
@@ -224,10 +223,6 @@ std::shared_ptr<ASTField> AST::parseField() {
         return std::make_shared<ASTField>();
     }
 
-    // if (token.type == IDENTIFIER && MYNIC_KEYWORDS.contains(token.value)) {
-
-    // }
-
     if (token.type == IDENTIFIER) {
         if (token.value == "enum") {
             std::shared_ptr<ASTEnum> enumDef = parseEnum();
@@ -258,22 +253,21 @@ std::shared_ptr<ASTField> AST::parseField() {
         }
         return parsePrimitive(); // Assume primitive
     }
-
     return std::make_shared<ASTField>();
 }
 
 std::shared_ptr<ASTPacket> AST::parsePacket() {
     auto packetNode = std::make_shared<ASTPacket>();
     packetNode->type = NodeType::PACKET;
-    packetNode->defaultSettings = interpreter->globalSettings;
-    bool isLambdaSegment = (eatToken(IDENTIFIER).value == "segment" && currentPacket); // Consumed 'packet'/'segment' token
+    packetNode->defaultSettings = interpreter->globalSettings; // Packet settings match global by default
+    bool isLambdaSegment = (eatToken(IDENTIFIER).value == "segment" && currentPacket); // Consumed 'packet' or 'segment' token
     currentPacket = &(*packetNode);
     packetNode->name = eatToken(IDENTIFIER).value;
 
     eatToken(OPEN_BRACKET);
-    blockDepth_t packetDepth = tokens[masterIndex].blockDepth;
+    blockDepth_t packetDepth = tokens[masterIndex].blockDepth; // Block depth to return to when packet is parsed
 
-    while (masterIndex < tokens.size() && tokens[masterIndex].blockDepth >= packetDepth) {
+    while (masterIndex < tokens.size() && tokens[masterIndex].blockDepth >= packetDepth) { // for each subfield in packet
         std::shared_ptr<ASTField> field = parseField();
 
         if (field->type == NodeType::DEFAULT_BLOCK) {
@@ -292,7 +286,7 @@ std::shared_ptr<ASTPacket> AST::parsePacket() {
     return packetNode;
 }
 
-std::shared_ptr<ASTField> AST::parseTypeDef() {
+std::shared_ptr<ASTField> AST::parseTypeDef() { // typedef EXISTING_TYPE NEW_TYPE
     eatToken(IDENTIFIER); // Consume 'typedef' token
     ASTTypeDef typeDef;
     typeDef.type = NodeType::TYPEDEF;
@@ -300,14 +294,7 @@ std::shared_ptr<ASTField> AST::parseTypeDef() {
     typeDef.newTypeName = eatToken(IDENTIFIER).value;
 
     if (isDynamicSizeType(typeDef.existingTypeName)) {
-        size_t pos = typeDef.existingTypeName.find_first_of("0123456789");
-        if (pos != std::string::npos) {
-            size_t bits = std::stoi(typeDef.existingTypeName.substr(pos));
-            if (bits == 0 || bits > 64) {
-                ErrorHandler::throwError("Integer type width must be between 1 and 64 bits: " + typeDef.existingTypeName, tokens, masterIndex - 1);
-            }
-            primitiveBitSizes[typeDef.existingTypeName] = bits;
-        }
+        primitiveBitSizes[typeDef.existingTypeName] = getTypeBitSize(typeDef.existingTypeName);
     }
 
     if (!isKnownType(typeDef.existingTypeName)) {
@@ -317,8 +304,8 @@ std::shared_ptr<ASTField> AST::parseTypeDef() {
     typedefAliases[typeDef.newTypeName] = typeDef.existingTypeName;
 
     eatToken({SEMI_COLON, NEW_LINE});
-    rootNode->properties[typeDef.newTypeName] = std::make_shared<ASTTypeDef>(typeDef);
-    primitiveBitSizes[typeDef.newTypeName] = primitiveBitSizes[typeDef.existingTypeName];
+    rootNode->properties[typeDef.newTypeName] = std::make_shared<ASTTypeDef>(typeDef); // Add the definition to the AST
+    primitiveBitSizes[typeDef.newTypeName] = primitiveBitSizes[typeDef.existingTypeName]; // Add the new type as a primitive
     return rootNode->properties[typeDef.newTypeName];
 }
 
@@ -326,52 +313,38 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
     auto field = std::make_shared<ASTPrimitiveValue>();
     field->datatype = eatToken(IDENTIFIER).value;
 
-    if (typedefAliases.find(field->datatype) != typedefAliases.end())
+    if (typedefAliases.find(field->datatype) != typedefAliases.end()) // If using typedefAlias
         field->datatype = typedefAliases[field->datatype];
 
-    if (isDynamicSizeType(field->datatype)) {
-        size_t pos = field->datatype.find_first_of("0123456789");
-        if (pos != std::string::npos) {
-            size_t bits = std::stoi(field->datatype.substr(pos));
-            if (field->datatype.starts_with("bytes")) bits *= 8;
-            if (bits == 0 || bits > 64) {
-                ErrorHandler::throwError("Integer type width must be between 1 and 64 bits: " + field->datatype, tokens, masterIndex - 1);
-            }
-            primitiveBitSizes[field->datatype] = bits;
-        }
-    }
+    if (isDynamicSizeType(field->datatype))
+        primitiveBitSizes[field->datatype] = getTypeBitSize(field->datatype);
 
-    if (!isKnownType(field->datatype)) {
+    if (!isKnownType(field->datatype))
         ErrorHandler::throwError("Unknown primitive datatype: " + field->datatype, tokens, masterIndex - 1);
-    }
 
     field->name = eatToken(IDENTIFIER).value;
     field->type = NodeType::PRIMITIVE;
 
-    if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == OPEN_SQUARE_BRACKET) { // Means array
+    if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == OPEN_SQUARE_BRACKET) { // Means array "uint arr[2];"
         eatToken(OPEN_SQUARE_BRACKET);
         auto arr = std::make_shared<ASTArray>();
         arr->elementSchema = field;
         arr->type = NodeType::ARRAY;
-        arr->dynamicLength = parseLogicalOr();
+        arr->dynamicLength = parseExpression();
         auto tryEval = interpreter->tryEvaluateASTExpression(arr->dynamicLength);
         if (tryEval.has_value()) {
             if (std::holds_alternative<uint64_t>(tryEval.value())) {
                 arr->length = std::get<uint64_t>(tryEval.value());
-                arr->dynamicLength = nullptr;
             } else if (std::holds_alternative<int64_t>(tryEval.value())) {
                 arr->length = static_cast<size_t>(std::get<int64_t>(tryEval.value()));
-                arr->dynamicLength = nullptr;
             } else if (std::holds_alternative<unsigned long>(tryEval.value())) {
                 arr->length = std::get<unsigned long>(tryEval.value());
-                arr->dynamicLength = nullptr;
             } else if (std::holds_alternative<long>(tryEval.value())) {
                 arr->length = static_cast<size_t>(std::get<long>(tryEval.value()));
-                arr->dynamicLength = nullptr;
             } else if (std::holds_alternative<double>(tryEval.value())) {
                 arr->length = static_cast<size_t>(std::get<double>(tryEval.value()));
-                arr->dynamicLength = nullptr;
             }
+            arr->dynamicLength = nullptr;
         }
         eatToken(CLOSE_SQUARE_BRACKET);
         field->sizeInBits = primitiveBitSizes[field->datatype];
@@ -379,20 +352,9 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
         return arr;
     }
 
-    if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == COLON) {
+    if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == COLON) { // If in bit field, and bit length is required
         eatToken(COLON);
-        Token bitNumToken = eatToken({INT_LITERAL, IDENTIFIER});
-        if (bitNumToken.type == INT_LITERAL) {
-            field->sizeInBits = std::stoul(bitNumToken.value);
-        } else {
-            auto definedVarIt = definedVariables.find(bitNumToken.value);
-            if (definedVarIt != definedVariables.end() &&
-                std::holds_alternative<uint64_t>(definedVarIt->second)) {
-                field->sizeInBits = std::get<uint64_t>(definedVarIt->second);
-            } else {
-                ErrorHandler::throwError("Defined value must be an integer when designating number of bits in primitive variable '" + field->name + "'", tokens, masterIndex);
-            }
-        }
+        field->sizeInBits = parseVariableCall();
         field->settings = parsePrimitiveSettings();
         return field;
     }
@@ -405,9 +367,9 @@ std::shared_ptr<ASTField> AST::parsePrimitive() {
 std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {
     std::shared_ptr<ASTPrimitiveValueSettings> settings;
 
-    if (currentPacket && currentPacket->defaultSettings) {
+    if (currentPacket && currentPacket->defaultSettings) { // If currentPacket has settings, use those
         settings = std::make_shared<ASTPrimitiveValueSettings>(*(currentPacket->defaultSettings));
-    } else {
+    } else { // Else, default to global settings
         settings = std::make_shared<ASTPrimitiveValueSettings>(*(interpreter->globalSettings));
     }
 
@@ -468,14 +430,14 @@ std::shared_ptr<ASTPrimitiveValueSettings> AST::parsePrimitiveSettings() {
 
 std::shared_ptr<ASTField> AST::parseImport() {
     eatToken(IDENTIFIER); // import token
-    Token fileName = eatToken(STRING_LITERAL);
+    Token fileName = eatToken(STRING_LITERAL); // File name
     std::string filePath = fileName.value;
     std::shared_ptr<std::vector<Token>> mainFileTokens = std::make_shared<std::vector<Token>>(tokens);
-    size_t mainMasterIndex = masterIndex;
-    mynic->loadFile(filePath);
+    size_t mainMasterIndex = masterIndex; // Keep record of what the masterIndex is
+    mynic->loadFile(filePath); // Parse a new file
     tokens = *mainFileTokens;
-    masterIndex = mainMasterIndex;
-    return std::make_shared<ASTField>(ASTField{});
+    masterIndex = mainMasterIndex; // Restore old masterIndex
+    return std::make_shared<ASTField>();
 }
 
 Value AST::convertTokenValue(Token token) {
@@ -508,11 +470,9 @@ std::shared_ptr<ASTEnumVariable> AST::parseEnumVarDefinition(ASTEnum* enumVar) {
     if (nextToken.type == EQUALS) { // Explicit decloration
         Token varValToken = eatToken({BOOL_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL});
         var.varValue = convertTokenValue(varValToken);
+        nextToken = eatToken({COMMA, EQUALS, CLOSE_BRACKET, NEW_LINE, OPEN_BRACKET});
     } else {
-        if (enumVar->variables.size())
-            var.varValue = std::get<uint64_t>(enumVar->variables.back()->varValue) + 1;
-        else
-            var.varValue = 0ULL;
+        var.varValue = enumVar->variables.size() ? std::get<uint64_t>(enumVar->variables.back()->varValue) + 1 : 0ULL;
     }
 
     // Complex enum parsing
@@ -522,16 +482,13 @@ std::shared_ptr<ASTEnumVariable> AST::parseEnumVarDefinition(ASTEnum* enumVar) {
             std::string attributeName = eatToken(IDENTIFIER).value;
             eatToken(COLON);
             Value attributeValue = convertTokenValue(eatToken({BOOL_LITERAL, INT_LITERAL, DOUBLE_LITERAL, STRING_LITERAL}));
-
             var.enumAttributes[attributeName] = attributeValue;
-
             Token nextToken = eatToken({COMMA, NEW_LINE, CLOSE_BRACKET});
             if (nextToken.type == CLOSE_BRACKET || Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CLOSE_BRACKET) {
                 break;
             }
         }
     }
-
     eatOptionalToken({COMMA, CLOSE_BRACKET});
     return std::make_shared<ASTEnumVariable>(var);
 }
@@ -549,7 +506,7 @@ std::shared_ptr<ASTEnum> AST::parseEnum() {
 
     size_t bitSize = primitiveBitSizes[enumVar.datatype];
     if (enumVar.datatype.size() >= 4) {
-        bitSize = std::stoul(enumVar.datatype.substr(4));
+        bitSize = getTypeBitSize(enumVar.datatype);
     }
     enumVar.sizeInBits = bitSize;
     enumVar.name = eatToken(IDENTIFIER).value;
@@ -565,7 +522,7 @@ std::shared_ptr<ASTEnum> AST::parseEnum() {
     return std::make_shared<ASTEnum>(enumVar);
 }
 
-std::shared_ptr<ASTField> AST::parseDefine() {
+std::shared_ptr<ASTField> AST::parseDefine() { // "define VAR_NAME 9"
     eatToken(IDENTIFIER); // Eat define token
     std::string varName = eatToken(IDENTIFIER).value;
     if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == STRING_LITERAL) {
@@ -606,7 +563,7 @@ std::shared_ptr<ASTBitfield> AST::parseBitfield() {
     while (masterIndex < tokens.size() && tokens[masterIndex + 1].blockDepth >= currentBlockDepth) {
         std::shared_ptr<ASTField> var = parseField();
         
-        if (var->type == NodeType::PRIMITIVE) {
+        if (var->type == NodeType::PRIMITIVE) { // If primitive, make sure it is an acceptable datatype
             auto asPrim = std::static_pointer_cast<ASTPrimitiveValue>(var);
             const std::unordered_set<std::string> allowedInBitfield = {"bit", "bits", "byte", "bytes", "uint", "int", "bool", "short", "ushort", "long", "ulong"};
             if (allowedInBitfield.find(asPrim->datatype) == allowedInBitfield.end())
@@ -638,7 +595,6 @@ std::shared_ptr<ASTBitfield> AST::parseBitfield() {
         remainderField->settings = primitiveSettings;
         bitfield.subfields.push_back(remainderField);
     }
-
     return std::make_shared<ASTBitfield>(bitfield);
 }
 
@@ -653,7 +609,6 @@ std::shared_ptr<ASTUnion> AST::parseUnion() {
         std::shared_ptr<ASTField> var = parseField();
         if (var->type != NodeType::ROOT_NODE)
             unionfield.subfields.push_back(var);
-        // if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type == CLOSE_BRACKET) break;
         eatOptionalToken({SEMI_COLON, NEW_LINE, CLOSE_BRACKET});
     }
 
@@ -677,12 +632,11 @@ std::shared_ptr<ASTBranch> AST::parseBranch() {
     parseAs.type = NodeType::PRIMITIVE;
     if (Lexer::nextNonWhiteSpaceToken(tokens, masterIndex).type != OPEN_BRACKET) { // If branch type explicitly defined
         parseAs.datatype = eatToken(IDENTIFIER).value;
-        parseAs.sizeInBits = getTypeBitSize(parseAs.datatype, masterIndex - 1);
+        parseAs.sizeInBits = getTypeBitSize(parseAs.datatype);
     } else {
         parseAs.datatype = "uint8";
         parseAs.sizeInBits = 8;
     }
-    // parseAs.sizeInBits = primitiveBitSizes[parseAs.datatype];
     branch.type = NodeType::BRANCH;
     branch.parseAs = parseAs;
     eatToken(OPEN_BRACKET);
@@ -695,7 +649,7 @@ std::shared_ptr<ASTBranch> AST::parseBranch() {
             primitiveCall->datatype = eatToken(IDENTIFIER).value;
             primitiveCall->name = primitiveCall->datatype;
             primitiveCall->type = NodeType::PRIMITIVE;
-            primitiveCall->sizeInBits = getTypeBitSize(primitiveCall->datatype, masterIndex - 1);
+            primitiveCall->sizeInBits = getTypeBitSize(primitiveCall->datatype);
             destination = primitiveCall;
         } else {
             destination = parseField();
@@ -704,7 +658,7 @@ std::shared_ptr<ASTBranch> AST::parseBranch() {
         if (ifOrDefaultsKeyword == "defaults") {
             branch.destinationDefault = destination;
             eatOptionalToken({SEMI_COLON, NEW_LINE});
-            continue;
+            break; // If defaults is used, assume it is the last condition and break from the loop
         } else if (ifOrDefaultsKeyword != "if") {
             ErrorHandler::throwError("Expected 'if' after destination in branch.", tokens, masterIndex);
         }
@@ -751,7 +705,7 @@ std::shared_ptr<ASTSwitch> AST::parseSwitch() {
             primitiveCall->datatype = eatToken(IDENTIFIER).value;
             primitiveCall->name = primitiveCall->datatype;
             primitiveCall->type = NodeType::PRIMITIVE;
-            primitiveCall->sizeInBits = getTypeBitSize(primitiveCall->datatype, masterIndex - 1);
+            primitiveCall->sizeInBits = getTypeBitSize(primitiveCall->datatype);
             destination = primitiveCall;
         } else {
             destination = parseField();
@@ -760,7 +714,7 @@ std::shared_ptr<ASTSwitch> AST::parseSwitch() {
         if (ifOrDefaultsKeyword == "defaults") {
             switchDef.destinationDefault = destination;
             eatOptionalToken({SEMI_COLON, NEW_LINE});
-            continue;
+            break;
         } else if (ifOrDefaultsKeyword != "if") {
             ErrorHandler::throwError("Expected 'if' after destination in branch.", tokens, masterIndex);
         }

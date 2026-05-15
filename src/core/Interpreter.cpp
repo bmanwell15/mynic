@@ -499,8 +499,8 @@ Value Interpreter::evaluateBinaryOp(std::string op, Value left, Value right) {
                 throwWarning(InterpreterWarningCodes::INVALID_STRING_OPERATION, "Invalid operator '" + op + "'. Strings '" + static_cast<std::string>(l) + "' and '" + static_cast<std::string>(r) + "' can only be added or compared for equality.");
                 return 0;
             }
-            // std::cout << "Type L: " << typeid(l).name() << " Value: " << l << std::endl;
-            // std::cout << "Type R: " << typeid(r).name() << " Value: " << r << std::endl;
+            // std::cout << "Type L: " << typeid(l).name() << " Value: " << l << std::endl; // DEBUG only
+            // std::cout << "Type R: " << typeid(r).name() << " Value: " << r << std::endl; // DEBUG only
             throwWarning(InterpreterWarningCodes::INVALID_BINARY_OPERATOR_TYPE, "Invalid types for binary operator: " + op);
             return 0;
         }
@@ -633,7 +633,7 @@ bool Interpreter::evaluateASTCondition(std::shared_ptr<InterpretedPrimitiveValue
 
 void Interpreter::enforcePostInterpretationSettings(std::shared_ptr<InterpretedPrimitiveValue> interpretedPrimitive) {
     if (!interpretedPrimitive->settings) return;
-    if (interpretedPrimitive->settings->exprASTTree) {
+    if (interpretedPrimitive->settings->exprASTTree) { // If the expr settings field is being used
         interpretedPrimitive->value = evaluateASTExpression(interpretedPrimitive, interpretedPrimitive->settings->exprASTTree);
     }
 }

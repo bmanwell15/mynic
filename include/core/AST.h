@@ -223,8 +223,7 @@ class AST {
     public:
         // Constructs the AST parser with a reference to the owning Mynic instance.
         explicit AST(Mynic* myn);
-
-        Interpreter* interpreter;
+        Interpreter* interpreter; // A pointer to the interpreter class
 
         // Primitive type bit sizes used during parsing.
         std::unordered_map<std::string, size_t> primitiveBitSizes;
@@ -241,11 +240,11 @@ class AST {
         // Parses a list of tokens into the AST root node.
         std::shared_ptr<ASTNode> parseTokensToAST(const std::vector<Token>& inputTokens, bool isMainFile=true);
 
-        // Computes the size in bits for a field or packet.
+        // Recursively computes the size in bits for a field or packet.
         size_t getStructureSize(std::shared_ptr<ASTField> field);
 
         // Computes the bit size of a type from a token.
-        size_t getTypeBitSize(const std::string& type, size_t tokenIndex);
+        size_t getTypeBitSize(const std::string& type);
 
     private:
         size_t masterIndex;
