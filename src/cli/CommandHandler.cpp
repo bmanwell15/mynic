@@ -3,18 +3,17 @@
 std::shared_ptr<Mynic> CommandHandler::decoder = std::make_shared<Mynic>();
 
 void CommandHandler::runCommand(std::string command) {
-    auto commandTokens = Lexer::tokenize(command);
-    if (commandTokens[0].value == "interpret") return CommandHandler::interpret(command);
-    if (commandTokens[0].value == "version") return CommandHandler::version();
-    if (commandTokens[0].value == "refresh") return CommandHandler::refresh();
-    if (commandTokens[0].value == "reset") return CommandHandler::reset();
-    if (commandTokens[0].value == "load") return CommandHandler::load(command);
+    auto commandChunks = CommandHandler::decoder->split(command, ' ');
+    if (commandChunks[0] == "interpret" || commandChunks[0] == "\\i") return CommandHandler::interpret(commandChunks);
+    if (commandChunks[0] == "version" || commandChunks[0] == "\\v") return CommandHandler::version();
+    if (commandChunks[0] == "refresh" || commandChunks[0] == "\\r") return CommandHandler::refresh();
+    if (commandChunks[0] == "reset") return CommandHandler::reset();
+    if (commandChunks[0] == "load") return CommandHandler::load(commandChunks);
 
-    std::cout << "Command '" + commandTokens[0].value + "' not found.\n";
+    std::cout << "Command '" + commandChunks[0] + "' not found.\n";
 }
 
-void CommandHandler::interpret(std::string command) {
-    auto commandChunks = CommandHandler::decoder->split(command, ' ');
+void CommandHandler::interpret(std::vector<std::string>& commandChunks) {
     if (commandChunks.size() < 4) {
         std::cout << "Invalid Command: Command missing parameters.\n";
         return;
@@ -62,15 +61,13 @@ void CommandHandler::reset() {
     std::cout << "All files and packets cleared.\n";
 }
 
-void CommandHandler::load(std::string command) {
-    auto commandChunks = CommandHandler::decoder->split(command, ' ');
+void CommandHandler::load(std::vector<std::string>& commandChunks) {
     for (size_t i = 1; i < commandChunks.size(); i++) { // commandChunks[0] is 'load'
-        if (CommandHandler::decoder->loadFile(commandChunks[i])) {
+        if (adapters::file::exists(commandChunks[i]) && CommandHandler::decoder->loadFile(commandChunks[i])) {
             std::cout << "Loaded file '" + commandChunks[i] + "'...\n";
         } else {
             std::cout << "\nERROR: Tried to load file '" + commandChunks[i] + "' but failed...\n\n";
         }
     }
     std::cout << '\n';
-    CommandHandler::decoder->printSchema();
 }

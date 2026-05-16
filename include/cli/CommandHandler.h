@@ -20,10 +20,10 @@ class CommandHandler {
 
     private:
         // Command to load another file into the AST system.
-        static void load(std::string command);
+        static void load(std::vector<std::string>& commandChunks);
 
         // Interprets a string of bytes using the AST definitions. "interpret 0x022204 as packetName"
-        static void interpret(std::string command);
+        static void interpret(std::vector<std::string>& commandChunks);
         
         // Prints the versions of Mynic Core and Mynic CLI
         static void version();

@@ -12,13 +12,22 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::string possibleFileName = argv[1];
+    std::string possibleTag = argv[1];
+
+    if (possibleTag == "-v" || possibleTag == "--version" || possibleTag == "version") {
+        CommandHandler::runCommand("version");
+        return 0;
+    }
 
     auto startTime = std::chrono::high_resolution_clock::now();
-    CommandHandler::runCommand("load " + possibleFileName);
+    for (int i = 1; i < argc; i++) {
+        std::string fileName = argv[i]; // Convert from char* to string
+        CommandHandler::runCommand("load " + fileName);
+    }
     auto endTime =  std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
     std::cout << "Loaded definition file in " << duration << " ms\n" << std::endl;
+    CommandHandler::decoder->printSchema();
 
     while (true) {
         std::cout << "mynic > ";

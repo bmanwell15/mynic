@@ -21,3 +21,9 @@ bool adapters::file::append(std::string filepath, std::string content) {
     file << content;
     return true;
 }
+
+bool adapters::file::exists(std::string filepath) {
+    std::ifstream file(filepath);
+    if (!file) return false;
+    return true;
+}

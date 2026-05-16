@@ -14,6 +14,9 @@ namespace adapters::file {
 
     /** Appends `content` to the specified `filepath`. Returns true if the file was found and writted to, false otherwise. */
     bool append(std::string filepath, std::string content);
+
+    /** returns true if the file exists, false otherwise */
+    bool exists(std::string filepath);
 };
 
 #endif

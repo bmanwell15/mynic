@@ -36,20 +36,23 @@ void printPacketField(std::shared_ptr<ASTField> field, blockDepth_t indent) {
 }
 
 void adapters::objects::printPacket(std::shared_ptr<ASTPacket>& packet) {
+    if (!packet) return;
     std::cout << packet->name << ':' << std::endl;
     for (const auto& pktField : packet->fields) {
         printPacketField(pktField, 1);
     }
 }
 
-void adapters::objects::printSegment(std::shared_ptr<ASTPacket>& packet) {
-    std::cout << packet->name << ':' << std::endl;
-    for (const auto& pktField : packet->fields) {
-        printPacketField(pktField, 1);
+void adapters::objects::printSegment(std::shared_ptr<ASTPacket>& segment) {
+    if (!segment) return;
+    std::cout << segment->name << ':' << std::endl;
+    for (const auto& segField : segment->fields) {
+        printPacketField(segField, 1);
     }
 }
 
 void adapters::objects::printSchema(std::shared_ptr<ASTNode>& rootNode) {
+    if (!rootNode) return;
     for (const auto& [name, field] : rootNode->properties) {
         if (field && field->type == NodeType::PACKET) {
             auto packet = std::static_pointer_cast<ASTPacket>(field);

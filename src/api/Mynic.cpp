@@ -1,19 +1,26 @@
 #include "Mynic.h"
 
 std::vector<std::string> Mynic::split(const std::string &txt, char ch) {
-    size_t pos = txt.find(ch);
-    size_t initialPos = 0;
+    std::string current = "";
     std::vector<std::string> strs;
 
-    // Decompose statement
-    while( pos != std::string::npos ) {
-        strs.push_back(txt.substr( initialPos, pos - initialPos ));
-        initialPos = pos + 1;
-        pos = txt.find(ch, initialPos);
+    for (size_t i = 0; i < txt.size(); i++) {
+        if (txt[i] == ch) {
+            strs.push_back(current);
+            current.clear();
+            continue;
+        }
+        if (txt[i] == '\"') {
+            i++; // Move past "
+            while (txt[i] != '\"') {
+                current += txt[i++];
+            }
+            i++; // Move past "
+            continue;
+        }
+        current += txt[i];
     }
-
-    // Add the last one
-    strs.push_back(txt.substr( initialPos, std::min( pos, txt.size() ) - initialPos + 1 ));
+    strs.push_back(current);
     return strs;
 }
 
@@ -103,7 +110,8 @@ std::vector<uint8_t> Mynic::bitsToBytes(const std::string& bitStr) {
 }
 
 void Mynic::printSchema() {
-    adapters::objects::printSchema(rootNode);
+    if (rootNode)
+        adapters::objects::printSchema(rootNode);
 }
 
 void Mynic::printPacket(const std::string& packetName) {
