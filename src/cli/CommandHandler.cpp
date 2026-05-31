@@ -2,29 +2,50 @@
 
 std::shared_ptr<Mynic> CommandHandler::decoder = std::make_shared<Mynic>();
 
-void CommandHandler::runCommand(std::string command) {
-    auto commandChunks = CommandHandler::decoder->split(command, ' ');
-    if (commandChunks[0] == "interpret" || commandChunks[0] == "\\i") return CommandHandler::interpret(commandChunks);
-    if (commandChunks[0] == "version" || commandChunks[0] == "\\v") return CommandHandler::version();
-    if (commandChunks[0] == "refresh" || commandChunks[0] == "\\r") return CommandHandler::refresh();
-    if (commandChunks[0] == "reset") return CommandHandler::reset();
-    if (commandChunks[0] == "load") return CommandHandler::load(commandChunks);
+void CommandHandler::runCommand(std::string c) {
+    auto command = parseCommand(c);
+    if (command.command == "interpret" || command.command == "/i") return CommandHandler::interpret(command);
+    if (command.command == "version" || command.command == "/v") return CommandHandler::version();
+    if (command.command == "refresh" || command.command == "/r") return CommandHandler::refresh();
+    if (command.command == "reset") return CommandHandler::reset();
+    if (command.command == "load") return CommandHandler::load(command);
 
-    std::cout << "Command '" + commandChunks[0] + "' not found.\n";
+    std::cout << "Command '" + command.command + "' not found.\n";
 }
 
-void CommandHandler::interpret(std::vector<std::string>& commandChunks) {
-    if (commandChunks.size() < 4) {
+CommandPrompt CommandHandler::parseCommand(std::string& command) {
+    auto commandChunks = CommandHandler::decoder->split(command, ' ');
+    CommandPrompt prompt;
+    prompt.command = commandChunks[0];
+    for (int i = 1; i < commandChunks.size();i++) {
+        auto chunk = commandChunks[i];
+        if (chunk[0] == '-') {
+            CommandFlag flag;
+            uint8_t doubleDash = 0;
+            if (chunk[1] == '-') doubleDash++;
+            auto chunkWithoutDash = chunk.substr(1 + doubleDash);
+            flag.flagName = chunkWithoutDash;
+            auto it = CommandHandler::flagsParamCount.find(chunkWithoutDash);
+            if (it == CommandHandler::flagsParamCount.end()) continue;
+            for (int j = 0; j < it->second && i + 1 < commandChunks.size(); j++) {
+                flag.params.push_back(commandChunks[++i]);
+            }
+            prompt.flags.push_back(flag);
+        } else {
+            prompt.commandParams.push_back(chunk);
+        }
+    }
+    return prompt;
+}
+
+void CommandHandler::interpret(CommandPrompt& command) {
+    if (command.commandParams.size() < 2) {
         std::cout << "Invalid Command: Command missing parameters.\n";
         return;
     }
-    std::string byteStr = commandChunks[1];
-    if (commandChunks[2] != "as") {
-        std::cout << "Expected keyword 'as' or comma. Instead recieved '" + commandChunks[2] + "'\n";
-        return;
-    }
-    
-    std::string packetName = commandChunks[3];
+    std::string byteStr = command.commandParams[0];
+    std::string packetName = command.commandParams[1];
+
     auto startTime = std::chrono::high_resolution_clock::now();
     auto decodedPacket = CommandHandler::decoder->decodePacket(byteStr, packetName);
     auto endTime = std::chrono::high_resolution_clock::now();
@@ -61,13 +82,17 @@ void CommandHandler::reset() {
     std::cout << "All files and packets cleared.\n";
 }
 
-void CommandHandler::load(std::vector<std::string>& commandChunks) {
-    for (size_t i = 1; i < commandChunks.size(); i++) { // commandChunks[0] is 'load'
-        if (adapters::file::exists(commandChunks[i]) && CommandHandler::decoder->loadFile(commandChunks[i])) {
-            std::cout << "Loaded file '" + commandChunks[i] + "'...\n";
+void CommandHandler::load(CommandPrompt& command) {
+    for (const auto& param : command.commandParams) { // commandChunks[0] is 'load'
+        if (adapters::file::exists(param) && CommandHandler::decoder->loadFile(param)) {
+            std::cout << "Loaded file '" + param + "'...\n";
         } else {
-            std::cout << "\nERROR: Tried to load file '" + commandChunks[i] + "' but failed...\n\n";
+            std::cout << "\nERROR: Tried to load file '" + param + "' but failed...\n\n";
         }
     }
     std::cout << '\n';
 }
+
+// void CommandHandler::interpretFile(CommandPrompt& command) {
+
+// }

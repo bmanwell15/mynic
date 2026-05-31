@@ -48,7 +48,7 @@ Decodes binary data using a specified packet definition.
 **Syntax:**
 
 ```
-interpret <hex_bytes> as <packet_name>
+interpret <hex_bytes> <packet_name>
 ```
 
 **Parameters:**
@@ -59,7 +59,7 @@ interpret <hex_bytes> as <packet_name>
 **Example:**
 
 ```
-interpret 4500003c0000000040060000c0a80001c0a8000200a00050000000000000000050022000c0a80001c0a80002 as TCP_PACKET
+interpret 4500003c0000000040060000c0a80001c0a8000200a00050000000000000000050022000c0a80001c0a80002 TCP_PACKET
 ```
 
 **Description:**
@@ -163,5 +163,5 @@ This sequence loads a TCP packet definition, decodes some sample TCP packet data
 - Use the `load` command to load your packet definitions before attempting to decode data
 - Hex bytes should be provided as continuous strings without spaces or 0x prefixes
 - The `refresh` command is useful during development when you're iteratively updating packet definitions
-- Use `reset` with caution as it clears all loaded definitions`</content>`
+- Use `reset` with caution as it clears all loaded definitions `</content>`
   `<parameter name="filePath">`c:\Users\benja\OneDrive - purdue.edu\Programming\C++\mynic\docs\user-guide\cli-reference.md

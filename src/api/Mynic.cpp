@@ -36,7 +36,7 @@ std::string Mynic::version() {
     return MYNIC_CORE_VERSION;
 }
 
-bool Mynic::loadFile(std::string& filename) {
+bool Mynic::loadFile(const std::string& filename) {
     // If filename already in Lexer, don't parse again
     if (std::find(Lexer::fileNames.begin(), Lexer::fileNames.end(), filename) != Lexer::fileNames.end()) return true;
 

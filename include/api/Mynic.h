@@ -19,17 +19,14 @@
 
 class Mynic {
     public:
-        // Constructs a new Mynic parser/interpreter instance.
         Mynic();
-
-        // Cleans up the Mynic instance.
         ~Mynic();
 
         // Splits a string by a single character delimiter.
         std::vector<std::string> split(const std::string &txt, char ch);
 
         // Loads a Mynic definition file into the AST.
-        bool loadFile(std::string& filename);
+        bool loadFile(const std::string& filename);
 
         // Prints the entire loaded schema to the console.
         void printSchema();
